@@ -1,16 +1,19 @@
 {
-    "name": "synthient",
-    "version": "1.0.0",
-    "main": "dist/index.js",
-    "scripts": {
-      "build": "tsc"
-    },
-    "dependencies": {
-      "axios": "^0.24.0"
-    },
-    "devDependencies": {
-      "typescript": "^4.5.4",
-      "@types/node": "^16.11.7"
-    }
-  }
-  
+  "name": "@synthient/synthient",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^0.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.5.4",
+    "@types/node": "^16.11.7"
+  },
+  "types": "./dist/index.d.ts",
+  "description": "Node.js client for the Synthient API.",
+  "author": "",
+  "license": "ISC"
+}

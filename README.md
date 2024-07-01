@@ -7,13 +7,13 @@ Node.js client for the Synthient API.
 To install the library:
 
 ```bash
-npm install synthient
+npm install @synthient/synthient
 ```
 
 or
 
 ```bash
-yarn add synthient
+yarn add @synthient/synthient
 ```
 
 ## Usage
