@@ -23,7 +23,7 @@ yarn add @synthient/synthient
 To use the client, you need to initialize it with your API key. Optionally, you can set a default timeout and proxy configuration.
 
 ```javascript
-const { Client } = require('synthient');
+const { Client } = require('@synthient/synthient');
 
 const apiKey = 'your-private-key-here';
 const client = new Client(apiKey, 5000, 'proxy-host', 8000);
@@ -100,7 +100,7 @@ The library includes utility functions for verifying tokens and determining acti
 Verify the validity of a token.
 
 ```javascript
-const { verifyToken } = require('synthient');
+const { verifyToken } = require('@synthient/synthient');
 
 const isValid = verifyToken(lookupResponse, TokenType.METRICS);
 console.log('Token is valid:', isValid);
@@ -111,7 +111,7 @@ console.log('Token is valid:', isValid);
 Determine the action to take based on the lookup response and risk level.
 
 ```javascript
-const { determineAction, TokenType, ActionType } = require('synthient');
+const { determineAction, TokenType, ActionType } = require('@synthient/synthient');
 
 const action = determineAction(lookupResponse, TokenType.METRICS);
 console.log('Action to take:', ActionType[action]);
