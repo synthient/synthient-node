@@ -54,7 +54,7 @@ export class BaseResponse {
  */
 export class Device {
   model?: string;
-  brand: string;
+  brand?: string;
   os: string;
   version: string;
 
