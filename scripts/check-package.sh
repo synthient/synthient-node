@@ -1,8 +1,7 @@
 #!/bin/sh
 # Packs the package and checks it the way consumers install it: package metadata, ESM
 # and CommonJS loading, the optional grpcschema peers, and TypeScript consumers on the
-# oldest and newest supported compilers. An optional directory argument keeps a copy of
-# the tarball there.
+# oldest and newest supported compilers.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -12,9 +11,6 @@ trap 'rm -rf "$work"' EXIT
 cd "$root"
 npm pack --silent --pack-destination "$work" > /dev/null
 tarball=$(ls "$work"/*.tgz)
-if [ $# -gt 0 ]; then
-  cp "$tarball" "$1"
-fi
 npx publint --strict "$root"
 npx attw "$tarball" --profile esm-only
 
