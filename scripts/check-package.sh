@@ -30,7 +30,10 @@ if node -e 'await import("@synthient/synthient/grpcschema")' 2> missing.txt; the
   echo "grpcschema loaded without its peer dependencies" >&2
   exit 1
 fi
-grep -Eq "@grpc/grpc-js|@bufbuild/protobuf" missing.txt
+if ! grep -Eq "@grpc/grpc-js|@bufbuild/protobuf" missing.txt; then
+  cat missing.txt >&2
+  exit 1
+fi
 npm install --silent --no-audit --no-fund @grpc/grpc-js @bufbuild/protobuf
 node -e 'const m = await import("@synthient/synthient/grpcschema"); if (typeof m.fetchSchema !== "function") process.exit(1)'
 
