@@ -169,7 +169,7 @@ export class Transport {
       let response: Response;
       try {
         response = await current.watch(
-          this.#config.fetch(url, {
+          this.#fetch(url, {
             method: request.method ?? "GET",
             headers,
             body: request.body ?? null,
@@ -261,7 +261,7 @@ export class Transport {
     for (let redirects = 0; ; redirects++) {
       const attempt = new Attempt(signal, this.#config.timeout);
       const response = await attempt.watch(
-        this.#config.fetch(url.href, {
+        this.#fetch(url.href, {
           headers: { "user-agent": this.#config.userAgent },
           redirect: "manual",
           signal: attempt.signal,
@@ -291,6 +291,11 @@ export class Transport {
       }
       url = next;
     }
+  }
+
+  // A custom fetch that throws synchronously still rejects, so watch() wraps its error.
+  async #fetch(url: string, init: RequestInit): Promise<Response> {
+    return this.#config.fetch(url, init);
   }
 
   #notify(response: Response): void {

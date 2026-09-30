@@ -135,6 +135,16 @@ test("permanent connection failures are not retried", async () => {
   }
 });
 
+test("a custom fetch that throws synchronously rejects with APIConnectionError", async () => {
+  const fetch = () => {
+    throw new TypeError("sync failure");
+  };
+
+  await assert.rejects(newClient({ fetch }).account(), (error: unknown) => {
+    return error instanceof APIConnectionError && error.cause instanceof TypeError;
+  });
+});
+
 test("a TLS failure against a real socket is not retried", async (t) => {
   let connections = 0;
   const server = net.createServer((socket) => {
