@@ -139,7 +139,7 @@ export class Transport {
   constructor(config: TransportConfig) {
     this.#config = config;
     this.baseURL = config.baseURL;
-    this.#base = config.baseURL.href.replace(/\/+$/, "");
+    this.#base = (config.baseURL.origin + config.baseURL.pathname).replace(/\/+$/, "");
     this.#headers = new Headers({ "x-api-key": config.apiKey, "user-agent": config.userAgent });
   }
 

@@ -91,6 +91,19 @@ test("sends the documented headers and keeps the base path", async () => {
   assert.equal(get.body, "");
 });
 
+test("an empty query or fragment on the base URL does not swallow the path", async () => {
+  const { fetch, requests } = stub(() => json(200, account));
+
+  for (const baseURL of ["https://api.test/api/v4?", "https://api.test/api/v4/#"]) {
+    await new Synthient({ apiKey: API_KEY, baseURL, fetch }).account();
+  }
+
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    ["https://api.test/api/v4/account/me", "https://api.test/api/v4/account/me"],
+  );
+});
+
 test("keeps the API key out of inspection and serialization", () => {
   const client = newClient({ apiKey: "secret-api-key" });
 
