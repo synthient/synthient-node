@@ -21,7 +21,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ["22", "24", "26"]
+        include:
+          - node-version: "22.12.0"
+            node-options: --experimental-strip-types
+          - node-version: "22"
+          - node-version: "24"
+          - node-version: "26"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +37,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+        env:
+          NODE_OPTIONS: ${{ matrix.node-options }}
 
   package:
     runs-on: ubuntu-latest
