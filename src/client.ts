@@ -45,7 +45,8 @@ export interface ClientOptions {
   /**
    * The fetch implementation. Defaults to the global `fetch`. A custom fetch must not
    * follow redirects or replay requests itself; the client relies on seeing each
-   * redirect to keep the API key away from other hosts.
+   * redirect to keep the API key away from other hosts. It must honor `init.signal`,
+   * which carries both the `timeout` and a call's `signal`.
    */
   fetch?: Fetch | undefined;
   /** Appended to the User-Agent header, such as "my-app/1.2". */
@@ -236,8 +237,9 @@ export class Synthient {
   }
 
   /**
-   * Resolves if the API and its dependencies are healthy. An unhealthy API rejects with
-   * an APIError with status 503, which is not retried.
+   * Resolves if the API and its dependencies are healthy. Unlike other free requests,
+   * it is retried only on rate limits, so an unhealthy API rejects with an APIError
+   * with status 503 and a connection failure rejects at once.
    */
   async health(options?: RequestOptions): Promise<void> {
     await this.#transport.json({ path: "/health", policy: "rateLimit" }, options?.signal);
