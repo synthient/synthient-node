@@ -20,6 +20,7 @@ npx attw "$tarball" --profile esm-only
 
 cd "$work"
 npm init -y > /dev/null
+npm pkg set type=module
 npm install --silent --no-audit --no-fund "$tarball"
 cp "$root"/test/package/* .
 node esm.mjs
