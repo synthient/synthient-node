@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import net from "node:net";
 import { test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import { APIConnectionError, APIError } from "../src/index.ts";
+import { APIConnectionError, APIError, APITimeoutError } from "../src/index.ts";
 import { parseRetryAfter } from "../src/errors.ts";
 import { backoff } from "../src/transport.ts";
 import {
@@ -124,6 +124,74 @@ test("connection failures are retried only for free requests", async () => {
   requests.length = 0;
   await assert.rejects(client.lookupIP("8.8.8.8"), APIConnectionError);
   assert.equal(requests.length, 1);
+});
+
+test("free JSON requests retry interrupted response bodies", async (t) => {
+  const server = await serve(t, (_, res) => {
+    if (server.requests.length === 1) {
+      res.write('{"email":');
+      setTimeout(() => res.destroy(), 20);
+      return;
+    }
+    res.end('{"email":"a@example.com"}');
+  });
+
+  const account = await newClient({ baseURL: server.baseURL }).account();
+
+  assert.equal(account.email, "a@example.com");
+  assert.equal(server.requests.length, 2);
+});
+
+test("JSON body failures share the retry budget with headers and statuses", async () => {
+  const { fetch, requests } = stub((_, index) => {
+    if (index === 0) {
+      throw failure("ECONNRESET");
+    }
+    if (index === 1) {
+      return problem(503);
+    }
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.error(failure("ECONNRESET"));
+        },
+      }),
+    );
+  });
+  const [waits, wait] = recordWaits();
+
+  await assert.rejects(newClient({ fetch }, wait).account(), APIConnectionError);
+  assert.equal(requests.length, 3);
+  assert.equal(waits.length, 2);
+});
+
+test("billed lookups do not retry interrupted response bodies", async (t) => {
+  const server = await serve(t, (_, res) => {
+    res.write('{"ip":');
+    setTimeout(() => res.destroy(), 20);
+  });
+  const client = newClient({ baseURL: server.baseURL });
+
+  for (const lookup of [
+    () => client.lookupIP("8.8.8.8"),
+    () => client.lookupIPs(["8.8.8.8"]),
+    () => client.lookupDomain("example.com"),
+  ]) {
+    await assert.rejects(lookup(), APIConnectionError);
+  }
+  assert.equal(server.requests.length, 3);
+});
+
+test("free JSON requests retry stalled bodies within their retry budget", async (t) => {
+  const server = await serve(t, (_, res) => {
+    res.write('{"email":');
+  });
+
+  await assert.rejects(
+    newClient({ baseURL: server.baseURL, timeout: 50 }).account(),
+    APITimeoutError,
+  );
+  assert.equal(server.requests.length, 3);
 });
 
 test("permanent connection failures are not retried", async () => {

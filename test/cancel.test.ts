@@ -87,6 +87,17 @@ test("aborting stops pagination and streams", async (t) => {
   await assert.rejects(next, (error) => error === "stream");
 });
 
+test("aborting a free JSON body read does not retry", async (t) => {
+  const server = await serve(t, (_, res) => {
+    res.write('{"email":');
+  });
+  const client = newClient({ baseURL: server.baseURL });
+  const signal = AbortSignal.timeout(100);
+
+  await assert.rejects(client.account({ signal }), (error) => error === signal.reason);
+  assert.equal(server.requests.length, 1);
+});
+
 test("the idle timeout bounds waiting for headers and body data", async (t) => {
   const server = await serve(t, (req, res) => {
     if (req.url === "/api/v4/lookup/ip/8.8.4.4") {

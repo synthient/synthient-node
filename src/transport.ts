@@ -153,7 +153,18 @@ export class Transport {
    * Sends an API request, retrying as its policy allows, and returns the final
    * response with its body unread.
    */
-  async send(request: Request, signal?: AbortSignal): Promise<[Response, Attempt]> {
+  send(request: Request, signal?: AbortSignal): Promise<[Response, Attempt]> {
+    return this.#request<[Response, Attempt]>(request, signal, (response, attempt) => [
+      response,
+      attempt,
+    ]);
+  }
+
+  async #request<T>(
+    request: Request,
+    signal: AbortSignal | undefined,
+    consume: (response: Response, attempt: Attempt) => T | Promise<T>,
+  ): Promise<T> {
     const url = this.url(request);
     const headers = new Headers(this.#headers);
     headers.set("accept", request.accept ?? "application/json");
@@ -166,9 +177,9 @@ export class Transport {
       const canRetry = attempt < this.#config.maxRetries;
       const current = new Attempt(signal, this.#config.timeout);
 
-      let response: Response;
+      let delay = backoff(attempt);
       try {
-        response = await current.watch(
+        const response = await current.watch(
           this.#fetch(url, {
             method: request.method ?? "GET",
             headers,
@@ -177,50 +188,50 @@ export class Transport {
             signal: current.signal,
           }),
         );
+        this.#notify(response);
+
+        // A 429 without Retry-After is a spent monthly budget or concurrent stream
+        // limit, which a retry cannot fix.
+        const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+        const retryStatus =
+          (response.status === 429 && retryAfter !== undefined) ||
+          (request.policy === "transient" && RETRY_STATUSES.has(response.status));
+        if (!canRetry || !retryStatus || (retryAfter ?? 0) > MAX_RETRY_AFTER) {
+          return await consume(response, current);
+        }
+        await drain(response, current);
+        delay = Math.max(delay, retryAfter ?? 0);
       } catch (error) {
         if (!canRetry || request.policy !== "transient" || !transient(error, signal)) {
           throw error;
         }
-        await this.#config.wait(backoff(attempt), signal);
-        continue;
       }
-      this.#notify(response);
-
-      // The rate limiter's 429 carries Retry-After. A 429 without it means the key's
-      // monthly budget or concurrent stream limit is spent, which a retry cannot fix.
-      const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-      const retryStatus =
-        (response.status === 429 && retryAfter !== undefined) ||
-        (request.policy === "transient" && RETRY_STATUSES.has(response.status));
-      if (!canRetry || !retryStatus || (retryAfter ?? 0) > MAX_RETRY_AFTER) {
-        return [response, current];
-      }
-      await drain(response, current);
-      await this.#config.wait(Math.max(backoff(attempt), retryAfter ?? 0), signal);
+      await this.#config.wait(delay, signal);
     }
   }
 
   /** Sends an API request and returns its JSON object body. */
-  async json<T extends object>(request: Request, signal?: AbortSignal): Promise<T> {
-    const [response, attempt] = await this.send(request, signal);
-    if (!response.ok) {
-      throw await this.error(response, attempt);
-    }
-    const [body, complete] = await read(response, attempt, MAX_RESPONSE_SIZE);
-    if (!complete) {
-      throw new SynthientError(`response body exceeds ${MAX_RESPONSE_SIZE} bytes`);
-    }
-    let value: unknown;
-    try {
-      value = JSON.parse(new TextDecoder().decode(body));
-    } catch (error) {
-      throw new SynthientError("invalid JSON in response", { cause: error });
-    }
-    if (!isObject(value)) {
-      throw new SynthientError("response is not a JSON object");
-    }
-    // The client trusts the API's schema; only protocol control data is validated.
-    return value as T;
+  json<T extends object>(request: Request, signal?: AbortSignal): Promise<T> {
+    return this.#request(request, signal, async (response, attempt) => {
+      if (!response.ok) {
+        throw await this.error(response, attempt);
+      }
+      const [body, complete] = await read(response, attempt, MAX_RESPONSE_SIZE);
+      if (!complete) {
+        throw new SynthientError(`response body exceeds ${MAX_RESPONSE_SIZE} bytes`);
+      }
+      let value: unknown;
+      try {
+        value = JSON.parse(new TextDecoder().decode(body));
+      } catch (error) {
+        throw new SynthientError("invalid JSON in response", { cause: error });
+      }
+      if (!isObject(value)) {
+        throw new SynthientError("response is not a JSON object");
+      }
+      // The client trusts the API's schema; only protocol control data is validated.
+      return value as T;
+    });
   }
 
   /**
