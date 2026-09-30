@@ -46,7 +46,7 @@ for await (const event of client.proxies.stream()) {
 
 ## Documentation
 
-Every class and method is documented in its TSDoc, including errors, retries, exports, and downloads. Runnable programs are in [examples](examples), for example `npm run build && node examples/lookup-ip.ts 8.8.8.8`. Guides and field references are at [docs.synthient.com](https://docs.synthient.com). The `@synthient/synthient/grpcschema` module fetches the protobuf schema of the Synthient gRPC API; it needs `npm install @grpc/grpc-js @bufbuild/protobuf`.
+Every class and method is documented in its TSDoc, including errors, retries, exports, and downloads. Runnable programs are in [examples](examples), for example `npm run build && node examples/lookup-ip.ts 8.8.8.8`; running them directly needs Node.js 22.18 or later, which strips TypeScript types by default. Guides and field references are at [docs.synthient.com](https://docs.synthient.com). The `@synthient/synthient/grpcschema` module fetches the protobuf schema of the Synthient gRPC API; it needs `npm install @grpc/grpc-js @bufbuild/protobuf`.
 
 ## License
 
