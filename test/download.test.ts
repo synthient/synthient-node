@@ -69,6 +69,14 @@ test("downloadURL resolves a relative location and allows http for an http base"
   assert.equal(url.href, `${server.origin}/storage/2026-05-07.parquet?sig=x`);
 });
 
+test("downloadURL resolves a relative location against the request, not response.url", async () => {
+  const fetch = () => Promise.resolve(redirect("../storage/x.parquet?sig=x"));
+
+  const url = await newClient({ fetch }).proxies.downloadURL("2026-05-07/9");
+
+  assert.equal(url.href, `${BASE_URL}/feeds/proxies/export/storage/x.parquet?sig=x`);
+});
+
 test("downloadURL rejects invalid redirects", async () => {
   const cases = [
     [new Response(null, { status: 307 }), "export redirect has no valid location"],

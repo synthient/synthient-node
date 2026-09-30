@@ -137,10 +137,11 @@ export class Feed<T> {
    * key, so treat it as a secret.
    */
   async downloadURL(id: string, options?: RequestOptions): Promise<URL> {
-    const [response, attempt] = await this.#transport.send(
-      { path: `${this.#path}/export/${exportPath(id)}`, policy: "transient" },
-      options?.signal,
-    );
+    const request = {
+      path: `${this.#path}/export/${exportPath(id)}`,
+      policy: "transient",
+    } as const;
+    const [response, attempt] = await this.#transport.send(request, options?.signal);
     if (response.status >= 400) {
       throw await this.#transport.error(response, attempt);
     }
@@ -150,7 +151,7 @@ export class Feed<T> {
     }
 
     const header = response.headers.get("location");
-    const location = header === null ? null : URL.parse(header, response.url || undefined);
+    const location = header === null ? null : URL.parse(header, this.#transport.url(request));
     if (!location || location.username || location.password) {
       throw new SynthientError("export redirect has no valid location");
     }

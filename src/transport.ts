@@ -143,16 +143,18 @@ export class Transport {
     this.#headers = new Headers({ "x-api-key": config.apiKey, "user-agent": config.userAgent });
   }
 
+  /** Returns the absolute URL of an API request. */
+  url(request: Request): string {
+    const search = new URLSearchParams(request.query).toString();
+    return search ? `${this.#base}${request.path}?${search}` : this.#base + request.path;
+  }
+
   /**
    * Sends an API request, retrying as its policy allows, and returns the final
    * response with its body unread.
    */
   async send(request: Request, signal?: AbortSignal): Promise<[Response, Attempt]> {
-    let url = this.#base + request.path;
-    const search = new URLSearchParams(request.query).toString();
-    if (search) {
-      url += `?${search}`;
-    }
+    const url = this.url(request);
     const headers = new Headers(this.#headers);
     headers.set("accept", request.accept ?? "application/json");
     if (request.body !== undefined) {
