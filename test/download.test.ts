@@ -5,6 +5,7 @@ import {
   APIConnectionError,
   APIError,
   APITimeoutError,
+  SynthientError,
   type ResponseMetadata,
 } from "../src/index.ts";
 import {
@@ -190,6 +191,63 @@ test("an unreachable storage host does not leak the URL", async (t) => {
       return true;
     },
   );
+});
+
+test("custom fetch failures do not expose signed storage URLs", async () => {
+  for (const failure of [
+    new Error(`request to ${PRESIGNED} failed`),
+    new SynthientError(PRESIGNED),
+    new APITimeoutError(PRESIGNED),
+    new Error("failed", { cause: { url: PRESIGNED } }),
+  ]) {
+    for (const duringBody of [false, true]) {
+      const { fetch } = storageStub(() => {
+        if (!duringBody) {
+          throw failure;
+        }
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(failure);
+            },
+          }),
+        );
+      });
+
+      await assert.rejects(
+        async () => {
+          const body = await newClient({ fetch }).proxies.download("latest");
+          await text(body);
+        },
+        (error: unknown) => {
+          assert.ok(error instanceof APIConnectionError);
+          if (failure instanceof APITimeoutError) {
+            assert.ok(error instanceof APITimeoutError);
+          }
+          assert.doesNotMatch(inspect(error, { depth: Infinity }), /secret-signature/);
+          return true;
+        },
+      );
+    }
+  }
+});
+
+test("storage body cancellation preserves the caller's reason", async (t) => {
+  const storage = await serve(t, (_, res) => {
+    res.write("partial");
+  });
+  const api = await redirectTo(t, `${storage.origin}/file.parquet`);
+  const controller = new AbortController();
+  const body = await newClient({ baseURL: api.baseURL }).proxies.download("latest", {
+    signal: controller.signal,
+  });
+  const reader = body.getReader();
+  await reader.read();
+  const next = reader.read();
+  const reason = new Error("stop");
+  controller.abort(reason);
+
+  await assert.rejects(next, (error) => error === reason);
 });
 
 test("canceling a download closes the storage connection", async (t) => {

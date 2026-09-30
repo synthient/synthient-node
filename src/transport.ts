@@ -95,10 +95,16 @@ export class Attempt {
   readonly signal: AbortSignal;
   readonly #timer = new AbortController();
   readonly #timeout: number;
+  readonly #surface: "api" | "storage";
 
-  constructor(caller: AbortSignal | undefined, timeout: number) {
+  constructor(
+    caller: AbortSignal | undefined,
+    timeout: number,
+    surface: "api" | "storage" = "api",
+  ) {
     this.caller = caller;
     this.#timeout = timeout;
+    this.#surface = surface;
     this.signal = caller ? AbortSignal.any([caller, this.#timer.signal]) : this.#timer.signal;
   }
 
@@ -119,8 +125,14 @@ export class Attempt {
       if (this.caller?.aborted) {
         throw this.caller.reason;
       }
-      if (this.#timer.signal.aborted) {
+      if (
+        this.#timer.signal.aborted ||
+        (this.#surface === "storage" && error instanceof APITimeoutError)
+      ) {
         throw new APITimeoutError("request timed out");
+      }
+      if (this.#surface === "storage") {
+        throw new APIConnectionError("connection failed");
       }
       if (error instanceof SynthientError) {
         throw error;
@@ -273,7 +285,7 @@ export class Transport {
     let url = start;
     for (let redirects = 0; ; redirects++) {
       signal?.throwIfAborted();
-      const attempt = new Attempt(signal, this.#config.timeout);
+      const attempt = new Attempt(signal, this.#config.timeout, "storage");
       const response = await attempt.watch(
         this.#fetch(url.href, {
           headers: { "user-agent": this.#config.userAgent },
