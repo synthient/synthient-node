@@ -114,6 +114,7 @@ test("fetchSchema reports gRPC failures as SchemaError", async (t) => {
     (error: unknown) => {
       assert.ok(error instanceof SchemaError);
       assert.equal(error.code, grpc.status.NOT_FOUND);
+      assert.match(error.message, /test\.v1\.Missing/);
       assert.match(explain(error), /No protobuf schema found/);
       return true;
     },

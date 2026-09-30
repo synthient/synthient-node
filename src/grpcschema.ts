@@ -262,7 +262,12 @@ export function explain(error: unknown): string {
 }
 
 function isServiceError(error: unknown): error is ServiceError {
-  return error instanceof Error && "code" in error && typeof error.code === "number";
+  return (
+    error instanceof Error &&
+    !(error instanceof SchemaError) &&
+    "code" in error &&
+    typeof error.code === "number"
+  );
 }
 
 // Decodes a ServerReflectionResponse, keeping only the fields fetchSchema uses.
