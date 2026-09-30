@@ -155,7 +155,14 @@ export async function fetchSchema(options: FetchSchemaOptions = {}): Promise<Sch
       throw new SchemaError("reflection response has no file descriptors");
     }
     for (const bytes of reply.files) {
-      const file = fromBinary(FileDescriptorProtoSchema, bytes);
+      let file: FileDescriptorProto;
+      try {
+        file = fromBinary(FileDescriptorProtoSchema, bytes);
+      } catch (error) {
+        throw new SchemaError("reflection returned an invalid file descriptor", undefined, {
+          cause: error,
+        });
+      }
       if (!file.name) {
         throw new SchemaError("reflection returned a file descriptor without a name");
       }
