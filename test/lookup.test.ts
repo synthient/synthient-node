@@ -139,7 +139,7 @@ test("lookupDomain rejects invalid input without a request", async () => {
   const { fetch, requests } = stub(() => json(200, DOMAIN_INFO));
   const client = newClient({ fetch });
 
-  for (const domain of ["", ".", ".."]) {
+  for (const domain of ["", ".", "..", "a\uD800.example"]) {
     await assert.rejects(client.lookupDomain(domain), TypeError);
   }
   for (const limit of [0, -1, 1.5, Number.NaN]) {

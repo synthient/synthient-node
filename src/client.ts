@@ -205,7 +205,13 @@ export class Synthient {
     params?: LookupDomainParams,
     options?: RequestOptions,
   ): Promise<DomainInfo> {
-    if (typeof domain !== "string" || domain === "" || domain === "." || domain === "..") {
+    if (
+      typeof domain !== "string" ||
+      domain === "" ||
+      domain === "." ||
+      domain === ".." ||
+      !domain.isWellFormed()
+    ) {
       throw new TypeError("invalid domain");
     }
     return this.#transport.json<DomainInfo>(
