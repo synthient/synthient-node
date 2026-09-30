@@ -62,11 +62,12 @@ export class Feed<T> {
    * and the server sends a keepalive about every 15 seconds.
    */
   async *stream(options?: RequestOptions): AsyncGenerator<T, void, undefined> {
+    const signal = options?.signal;
     const body = await this.#transport.stream(
       { path: `${this.#path}/stream`, accept: "application/x-ndjson", policy: "transient" },
-      options?.signal,
+      signal,
     );
-    yield* ndjson<T>(body);
+    yield* ndjson<T>(body, signal);
   }
 
   /** Returns one page of the feed's exports, newest first. Use `allExports` to iterate every page. */
@@ -111,7 +112,11 @@ export class Feed<T> {
     const seen = new Set([cursor ?? ""]);
     for (;;) {
       const page = await this.listExports({ limit, cursor }, options);
-      yield* page.feeds;
+      options?.signal?.throwIfAborted();
+      for (const item of page.feeds) {
+        yield item;
+        options?.signal?.throwIfAborted();
+      }
       if (!page.next_cursor) {
         return;
       }
@@ -199,7 +204,10 @@ function exportPath(id: string): string {
  * Parses an NDJSON body into its JSON object events, skipping blank lines. Canceling
  * the iteration cancels the body.
  */
-async function* ndjson<T>(body: ReadableStream<Uint8Array>): AsyncGenerator<T, void, undefined> {
+async function* ndjson<T>(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal | undefined,
+): AsyncGenerator<T, void, undefined> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let pending: Uint8Array[] = [];
@@ -237,6 +245,7 @@ async function* ndjson<T>(body: ReadableStream<Uint8Array>): AsyncGenerator<T, v
   try {
     for (;;) {
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) {
         break;
       }
@@ -247,6 +256,7 @@ async function* ndjson<T>(body: ReadableStream<Uint8Array>): AsyncGenerator<T, v
         const event = flush();
         if (event !== undefined) {
           yield event;
+          signal?.throwIfAborted();
         }
       }
       append(value.subarray(start));
@@ -254,6 +264,7 @@ async function* ndjson<T>(body: ReadableStream<Uint8Array>): AsyncGenerator<T, v
     const event = flush();
     if (event !== undefined) {
       yield event;
+      signal?.throwIfAborted();
     }
   } finally {
     reader.cancel().catch(() => undefined);

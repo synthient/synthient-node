@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { APIConnectionError, APITimeoutError } from "../src/index.ts";
 import { wait } from "../src/transport.ts";
-import { EXPORT, newClient, problem, serve, stub } from "./helpers.ts";
+import { EXPORT, json, newClient, problem, serve, stub } from "./helpers.ts";
 
 test("an already aborted signal sends nothing", async (t) => {
   const server = await serve(t, (_, res) => res.end("{}"));
@@ -85,6 +85,52 @@ test("aborting stops pagination and streams", async (t) => {
   const next = events.next();
   streaming.abort("stream");
   await assert.rejects(next, (error) => error === "stream");
+});
+
+test("aborting stops buffered stream events and end-of-stream completion", async () => {
+  for (const content of ["{}\n{}\n", "{}\n{}", "{}"]) {
+    let canceled = false;
+    const { fetch } = stub(
+      () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(content));
+              if (!content.endsWith("\n")) {
+                controller.close();
+              }
+            },
+            cancel() {
+              canceled = true;
+            },
+          }),
+        ),
+    );
+    const controller = new AbortController();
+    const events = newClient({ fetch }).proxies.stream({ signal: controller.signal });
+    await events.next();
+    controller.abort("stop");
+
+    await assert.rejects(events.next(), (error) => error === "stop");
+    if (content.endsWith("\n")) {
+      assert.equal(canceled, true);
+    }
+  }
+});
+
+test("aborting stops buffered exports and last-page completion", async () => {
+  for (const feeds of [[EXPORT, EXPORT], [EXPORT]]) {
+    const { fetch, requests } = stub(() => json(200, { feeds }));
+    const controller = new AbortController();
+    const exports = newClient({ fetch }).proxies.allExports(undefined, {
+      signal: controller.signal,
+    });
+    await exports.next();
+    controller.abort("stop");
+
+    await assert.rejects(exports.next(), (error) => error === "stop");
+    assert.equal(requests.length, 1);
+  }
 });
 
 test("aborting a free JSON body read does not retry", async (t) => {
