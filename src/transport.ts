@@ -112,7 +112,9 @@ export class Attempt {
       this.#timer.abort();
     }, this.#timeout);
     try {
-      return await work;
+      const result = await work;
+      this.caller?.throwIfAborted();
+      return result;
     } catch (error) {
       if (this.caller?.aborted) {
         throw this.caller.reason;
@@ -270,6 +272,7 @@ export class Transport {
   async download(start: URL, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     let url = start;
     for (let redirects = 0; ; redirects++) {
+      signal?.throwIfAborted();
       const attempt = new Attempt(signal, this.#config.timeout);
       const response = await attempt.watch(
         this.#fetch(url.href, {
@@ -429,7 +432,8 @@ async function read(
   }
 }
 
-/** Discards a body so its connection can be reused. Failures are ignored. */
+/** Discards a body so its connection can be reused. Failures other than caller cancellation are ignored. */
 export async function drain(response: Response, attempt: Attempt): Promise<void> {
   await read(response, attempt, MAX_ERROR_SIZE).catch(() => undefined);
+  attempt.caller?.throwIfAborted();
 }

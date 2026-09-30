@@ -77,6 +77,19 @@ test("downloadURL resolves a relative location against the request, not response
   assert.equal(url.href, `${BASE_URL}/feeds/proxies/export/storage/x.parquet?sig=x`);
 });
 
+test("downloadURL preserves cancellation while draining a redirect", async (t) => {
+  const server = await serve(t, (_, res) => {
+    res.writeHead(307, { location: PRESIGNED });
+    res.write("redirecting");
+  });
+  const signal = AbortSignal.timeout(100);
+
+  await assert.rejects(
+    newClient({ baseURL: server.baseURL }).proxies.downloadURL("latest", { signal }),
+    (error) => error === signal.reason,
+  );
+});
+
 test("downloadURL rejects invalid redirects", async () => {
   const cases = [
     [new Response(null, { status: 307 }), "export redirect has no valid location"],
