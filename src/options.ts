@@ -1,6 +1,14 @@
-/** Returns the trimmed API key, falling back to the SYNTHIENT_API_KEY environment variable. */
+/**
+ * Returns the trimmed API key, falling back to the SYNTHIENT_API_KEY environment variable.
+ * It throws a TypeError, without the key in its message, if the key has characters a
+ * header cannot carry.
+ */
 export function resolveAPIKey(apiKey: string | undefined): string {
-  return (apiKey ?? process.env.SYNTHIENT_API_KEY ?? "").trim();
+  const key = (apiKey ?? process.env.SYNTHIENT_API_KEY ?? "").trim();
+  if (/[^\x20-\x7e]/.test(key)) {
+    throw new TypeError("invalid API key: it must be printable ASCII");
+  }
+  return key;
 }
 
 /** Throws a RangeError unless `timeout` is a whole number of milliseconds setTimeout accepts. */

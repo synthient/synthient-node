@@ -52,7 +52,8 @@ test("rejects invalid options", () => {
     { timeout: -1 },
     { timeout: 1.5 },
     { timeout: 2 ** 31 },
-    { apiKey: "key\r\nx-injected: 1" },
+    { apiKey: "hunter2\r\nx-injected: 1" },
+    { apiKey: "hunter2\u0000" },
     { userAgent: "app\nx-injected: 1" },
   ];
   for (const options of invalid) {
