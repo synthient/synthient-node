@@ -25,8 +25,11 @@ jobs:
         with:
           node-version: "26"
           cache: npm
-      - run: npm ci
+      - id: install
+        run: npm ci
       - run: npm run lint
-      - run: npm run typecheck
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck
       - name: Check declarations build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
