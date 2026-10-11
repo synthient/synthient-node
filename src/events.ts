@@ -136,10 +136,11 @@ export interface HeliosHTTPEvent {
   /** When the request was captured, in Unix milliseconds. */
   timestamp: UnixTime;
   /**
-   * Identifies the proxy tunnel the request arrived through. It is a 64-bit integer, so
-   * values above `Number.MAX_SAFE_INTEGER` lose precision.
+   * Identifies the proxy tunnel the request arrived through. It is an unsigned 64-bit
+   * integer on the wire, kept as its exact decimal digits because a number loses
+   * precision above `Number.MAX_SAFE_INTEGER`.
    */
-  tunnel_id: number;
+  tunnel_id: string;
   /** The destination host the tunnel was opened to. */
   domain: string;
   /** The destination port. */
@@ -171,10 +172,11 @@ export interface HeliosHTTPSEvent {
   /** When the handshake was captured, in Unix milliseconds. */
   timestamp: UnixTime;
   /**
-   * Identifies the proxy tunnel the handshake arrived through. It is a 64-bit integer,
-   * so values above `Number.MAX_SAFE_INTEGER` lose precision.
+   * Identifies the proxy tunnel the handshake arrived through. It is an unsigned 64-bit
+   * integer on the wire, kept as its exact decimal digits because a number loses
+   * precision above `Number.MAX_SAFE_INTEGER`.
    */
-  tunnel_id: number;
+  tunnel_id: string;
   /** The destination host the tunnel was opened to. */
   domain: string;
   /** The destination port. */
@@ -271,10 +273,10 @@ export interface HeliosDNSEvent {
   /** When the tunnel was captured, in Unix milliseconds. */
   timestamp: UnixTime;
   /**
-   * Identifies the proxy tunnel. It is a 64-bit integer, so values above
-   * `Number.MAX_SAFE_INTEGER` lose precision.
+   * Identifies the proxy tunnel. It is an unsigned 64-bit integer on the wire, kept as its
+   * exact decimal digits because a number loses precision above `Number.MAX_SAFE_INTEGER`.
    */
-  tunnel_id: number;
+  tunnel_id: string;
   /** The destination host the tunnel was opened to. */
   domain: string;
   /** The destination port. */

@@ -10,7 +10,7 @@ import type {
   ProxyEvent,
   TorrentEvent,
 } from "./events.ts";
-import { Feed } from "./feed.ts";
+import { Feed, exactTunnelID } from "./feed.ts";
 import { checkTimeout, limitQuery, resolveAPIKey } from "./options.ts";
 import {
   Transport,
@@ -140,9 +140,9 @@ export class Synthient {
     this.anonymizers = new Feed(this.#transport, "/feeds/anonymizers");
     this.torrents = new Feed(this.#transport, "/feeds/torrents");
     this.ja4t = new Feed(this.#transport, "/feeds/ja4t");
-    this.heliosHTTP = new Feed(this.#transport, "/feeds/helio/http");
-    this.heliosHTTPS = new Feed(this.#transport, "/feeds/helio/https");
-    this.heliosDNS = new Feed(this.#transport, "/feeds/helio/dns");
+    this.heliosHTTP = new Feed(this.#transport, "/feeds/helio/http", exactTunnelID);
+    this.heliosHTTPS = new Feed(this.#transport, "/feeds/helio/https", exactTunnelID);
+    this.heliosDNS = new Feed(this.#transport, "/feeds/helio/dns", exactTunnelID);
     this.heliosADB = new Feed(this.#transport, "/feeds/helio/adb");
   }
 

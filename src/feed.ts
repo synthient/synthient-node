@@ -6,6 +6,15 @@ import type { Export, ExportMeta, ExportPage } from "./types.ts";
 const MAX_EVENT_SIZE = 16 << 20;
 const EXPORT_ID = /^(\d{4})-(\d{2})-(\d{2})(?:\/(\d{1,2}))?$/;
 
+type Reviver = (key: string, value: unknown, context?: { source: string }) => unknown;
+
+/**
+ * Keeps each `tunnel_id` as the exact decimal digits sent on the wire. Helios tunnel IDs
+ * are unsigned 64-bit integers, which a number cannot represent above 2^53.
+ */
+export const exactTunnelID: Reviver = (key, value, context) =>
+  key === "tunnel_id" && typeof value === "number" && context ? context.source : value;
+
 /** Optional parameters for listing exports. */
 export interface ListExportsParams {
   /** The page size. The API default is 100, and it clamps values above 500. */
@@ -43,11 +52,13 @@ export function hourlyExport(date: Date): string {
 export class Feed<T> {
   readonly #transport: Transport;
   readonly #path: string;
+  readonly #reviver: Reviver | undefined;
 
   /** @internal Feeds are created by the client. */
-  constructor(transport: Transport, path: string) {
+  constructor(transport: Transport, path: string, reviver?: Reviver) {
     this.#transport = transport;
     this.#path = path;
+    this.#reviver = reviver;
   }
 
   /**
@@ -67,7 +78,7 @@ export class Feed<T> {
       { path: `${this.#path}/stream`, accept: "application/x-ndjson", policy: "transient" },
       signal,
     );
-    yield* ndjson<T>(body, signal);
+    yield* ndjson<T>(body, signal, this.#reviver);
   }
 
   /** Returns one page of the feed's exports, newest first. Use `allExports` to iterate every page. */
@@ -207,6 +218,7 @@ function exportPath(id: string): string {
 async function* ndjson<T>(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal | undefined,
+  reviver: Reviver | undefined,
 ): AsyncGenerator<T, void, undefined> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -232,7 +244,7 @@ async function* ndjson<T>(
     }
     let event: unknown;
     try {
-      event = JSON.parse(line);
+      event = JSON.parse(line, reviver);
     } catch (error) {
       throw new SynthientError("invalid stream event", { cause: error });
     }

@@ -74,7 +74,24 @@ test("stream passes Helios HTTPS ClientHellos through", async () => {
 
   const events = await collect(newClient({ fetch }).heliosHTTPS.stream());
 
-  assert.deepEqual(events, lines);
+  assert.deepEqual(
+    events,
+    lines.map((line) => ({ ...line, tunnel_id: "42" })),
+  );
+});
+
+test("stream keeps Helios tunnel IDs as their exact digits", async () => {
+  const ids = ["0", "1942782", "9007199254740993", "17257744507466107949", "18446744073709551615"];
+  const body = ids.map((id) => `{"timestamp":1778187600123,"tunnel_id":${id}}`).join("\n");
+  const client = newClient({ fetch: stub(() => chunked([body])).fetch });
+
+  for (const feed of [client.heliosHTTP, client.heliosHTTPS, client.heliosDNS]) {
+    const events = await collect<{ tunnel_id: string }>(feed.stream());
+    assert.deepEqual(
+      events.map((event) => event.tunnel_id),
+      ids,
+    );
+  }
 });
 
 test("stream rejects invalid and oversized events", async () => {

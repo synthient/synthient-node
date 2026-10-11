@@ -72,6 +72,14 @@ const MODELS: Record<string, string> = {
   TLSExtension: "TLSExtension",
 };
 
+// Integers the SDK keeps as exact decimal strings. The spec says int64, but live Helios
+// tunnel IDs are unsigned 64-bit values above Number.MAX_SAFE_INTEGER.
+const EXACT_INTEGERS = new Set([
+  "HoneypotHTTPStreamEntry.tunnel_id",
+  "HoneypotHTTPSStreamEntry.tunnel_id",
+  "HoneypotDNSStreamEntry.tunnel_id",
+]);
+
 // Schemas the SDK deliberately does not model, with the reason.
 const UNMODELED: Record<string, string> = {
   IpBatchRequest: "lookupIPs encodes the request body",
@@ -196,9 +204,10 @@ function mismatches(schemaName: string, schema: SpecSchema, typeName: string): s
     if (inline !== undefined) {
       problems.push(...mismatches(`${schemaName}.${name}`, property, inline));
     }
-    if (!matches(property, memberType)) {
+    const expected = EXACT_INTEGERS.has(`${schemaName}.${name}`) ? { type: "string" } : property;
+    if (!matches(expected, memberType)) {
       problems.push(
-        `${typeName}.${name} has type ${checker.typeToString(memberType)}, not ${JSON.stringify(property)}`,
+        `${typeName}.${name} has type ${checker.typeToString(memberType)}, not ${JSON.stringify(expected)}`,
       );
     }
   }
