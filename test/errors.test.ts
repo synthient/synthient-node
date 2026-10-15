@@ -60,6 +60,27 @@ test("APIError keeps the status for bodies that are not problem details", async 
   }
 });
 
+test("APIError keeps a plain-text body as the detail", async () => {
+  const plain = await apiError(
+    new Response("401 invalid api key\n", {
+      status: 401,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    }),
+  );
+  assert.equal(plain.detail, "401 invalid api key");
+
+  const html = await apiError(
+    new Response("<html><body>Bad Gateway</body></html>", {
+      status: 502,
+      headers: { "content-type": "text/html" },
+    }),
+  );
+  assert.equal(html.detail, "");
+
+  const problemDetail = await apiError(problem(404, { detail: "No snapshot found" }));
+  assert.equal(problemDetail.detail, "No snapshot found");
+});
+
 test("APIError falls back to the problem instance for the request ID", async () => {
   const error = await apiError(problem(404, { instance: "instance-id" }));
 

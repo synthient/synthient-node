@@ -54,7 +54,10 @@ export class APIError extends SynthientError {
   readonly type: string;
   /** A short summary of the problem type, or "". */
   readonly title: string;
-  /** An explanation of this occurrence of the problem, or "". */
+  /**
+   * An explanation of this occurrence of the problem, or "". For a plain-text error,
+   * such as the edge's 401 for a malformed key, it is the response body.
+   */
   readonly detail: string;
   /** Validation messages by request field, set on 422 responses. */
   readonly errors: Record<string, string[]>;
@@ -81,15 +84,19 @@ export class APIError extends SynthientError {
  * malformed problem details still keep the status, request ID, and Retry-After.
  */
 export function apiError(response: Response, body: Uint8Array, cause?: unknown): APIError {
-  let problem: Record<string, unknown> = {};
+  const decoded = new TextDecoder().decode(body);
+  let problem: Record<string, unknown> | undefined;
   try {
-    const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
+    const parsed: unknown = JSON.parse(decoded);
     if (isObject(parsed)) {
       problem = parsed;
     }
   } catch {
     // Not problem details; the status and headers still describe the failure.
   }
+  const mediaType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  const plainText = problem === undefined && mediaType === "text/plain" ? decoded.trim() : "";
+  problem ??= {};
   const text = (value: unknown) => (typeof value === "string" ? value : "");
   let errors: Record<string, string[]> = {};
   if (isObject(problem.errors)) {
@@ -107,7 +114,7 @@ export function apiError(response: Response, body: Uint8Array, cause?: unknown):
       status: response.status,
       type: text(problem.type),
       title: text(problem.title),
-      detail: text(problem.detail),
+      detail: plainText || text(problem.detail),
       errors,
       requestID: response.headers.get("x-request-id") ?? text(problem.instance),
       retryAfter: parseRetryAfter(response.headers.get("retry-after")),
