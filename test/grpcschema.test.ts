@@ -89,18 +89,19 @@ test("fetchSchema resolves every service and its imports in dependency order", a
   assert.deepEqual(keys, [["test-key"]]);
 });
 
-test("fetchSchema honors symbols and includeReflection", async (t) => {
+test("fetchSchema honors symbols, including the reflection service", async (t) => {
   const { endpoint, keys } = await start(t, reflection);
   setAPIKeyEnv(t, undefined);
 
-  const all = await fetchSchema({ endpoint, plaintext: true, includeReflection: true });
+  const services = ["grpc.reflection.v1.ServerReflection", "test.v1.Greeter"];
+  const withReflection = await fetchSchema({ endpoint, plaintext: true, symbols: services });
   const symbols = await fetchSchema({
     endpoint: `grpc://${endpoint}`,
     plaintext: true,
     symbols: [" test.v1.GreetReply ", "test.v1.GreetReply", ""],
   });
 
-  assert.deepEqual(all.symbols, ["grpc.reflection.v1.ServerReflection", "test.v1.Greeter"]);
+  assert.deepEqual(withReflection.symbols, services);
   assert.deepEqual(symbols.symbols, ["test.v1.GreetReply"]);
   assert.deepEqual(keys, [[], []]);
 });

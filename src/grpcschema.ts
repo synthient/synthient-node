@@ -48,9 +48,10 @@ export interface FetchSchemaOptions {
   endpoint?: string | undefined;
   /** Disables TLS, for local development servers. */
   plaintext?: boolean | undefined;
-  /** Includes the reflection service itself when listing services. */
-  includeReflection?: boolean | undefined;
-  /** Fully qualified service or message names to resolve. Empty resolves every listed service. */
+  /**
+   * Fully qualified service or message names to resolve. Empty resolves every listed
+   * service except the grpc.reflection services.
+   */
   symbols?: Iterable<string> | undefined;
   /** Cancels the fetch, which rejects with the signal's reason. */
   signal?: AbortSignal | undefined;
@@ -182,11 +183,7 @@ export async function fetchSchema(options: FetchSchemaOptions = {}): Promise<Sch
       }
       symbols = reply.services
         .map((name) => name.trim())
-        .filter(
-          (name) =>
-            name !== "" &&
-            (options.includeReflection === true || !name.startsWith("grpc.reflection.")),
-        )
+        .filter((name) => name !== "" && !name.startsWith("grpc.reflection."))
         .sort();
     }
     if (symbols.length === 0) {
@@ -220,8 +217,14 @@ export async function fetchSchema(options: FetchSchemaOptions = {}): Promise<Sch
     if (signal?.aborted) {
       throw signal.reason;
     }
-    if (isServiceError(error)) {
-      throw new SchemaError(error.details || "reflection failed", error.code, { cause: error });
+    if (
+      error instanceof Error &&
+      !(error instanceof SchemaError) &&
+      "code" in error &&
+      typeof error.code === "number"
+    ) {
+      const { details } = error as ServiceError;
+      throw new SchemaError(details || "reflection failed", error.code, { cause: error });
     }
     throw error;
   } finally {
@@ -266,15 +269,6 @@ export function explain(error: unknown): string {
     return "";
   }
   return EXPLANATIONS[error.code] ?? "";
-}
-
-function isServiceError(error: unknown): error is ServiceError {
-  return (
-    error instanceof Error &&
-    !(error instanceof SchemaError) &&
-    "code" in error &&
-    typeof error.code === "number"
-  );
 }
 
 // Decodes a ServerReflectionResponse, keeping only the fields fetchSchema uses.
