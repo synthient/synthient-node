@@ -206,61 +206,37 @@ async function* ndjson<T>(
 ): AsyncGenerator<T, void, undefined> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
-  let pending: Uint8Array[] = [];
-  let size = 0;
-  const append = (part: Uint8Array) => {
-    if (part.byteLength === 0) {
-      return;
-    }
-    pending.push(part);
-    size += part.byteLength;
-    if (size > MAX_EVENT_SIZE) {
-      throw new SynthientError(`stream event exceeds ${MAX_EVENT_SIZE} bytes`);
-    }
-  };
-  const flush = (): T | undefined => {
-    const bytes = pending.length === 1 ? pending[0] : Buffer.concat(pending, size);
-    pending = [];
-    size = 0;
-    const line = decoder.decode(bytes).trim();
-    if (line === "") {
-      return undefined;
-    }
-    let event: unknown;
-    try {
-      event = JSON.parse(line, reviver);
-    } catch (error) {
-      throw new SynthientError("invalid stream event", { cause: error });
-    }
-    if (!isObject(event)) {
-      throw new SynthientError("stream event is not a JSON object");
-    }
-    return event as T;
-  };
-
+  let pending = "";
   try {
     for (;;) {
       const { done, value } = await reader.read();
       signal?.throwIfAborted();
-      if (done) {
-        break;
+      const lines = decoder.decode(value, { stream: !done }).split("\n");
+      lines[0] = pending + (lines[0] ?? "");
+      pending = done ? "" : (lines.pop() ?? "");
+      if (pending.length > MAX_EVENT_SIZE || lines.some((line) => line.length > MAX_EVENT_SIZE)) {
+        throw new SynthientError(`stream event exceeds ${MAX_EVENT_SIZE} bytes`);
       }
-      let start = 0;
-      for (let end = value.indexOf(10); end !== -1; end = value.indexOf(10, start)) {
-        append(value.subarray(start, end));
-        start = end + 1;
-        const event = flush();
-        if (event !== undefined) {
-          yield event;
-          signal?.throwIfAborted();
+      for (const line of lines) {
+        const text = line.trim();
+        if (text === "") {
+          continue;
         }
+        let event: unknown;
+        try {
+          event = JSON.parse(text, reviver);
+        } catch (error) {
+          throw new SynthientError("invalid stream event", { cause: error });
+        }
+        if (!isObject(event)) {
+          throw new SynthientError("stream event is not a JSON object");
+        }
+        yield event as T;
+        signal?.throwIfAborted();
       }
-      append(value.subarray(start));
-    }
-    const event = flush();
-    if (event !== undefined) {
-      yield event;
-      signal?.throwIfAborted();
+      if (done) {
+        return;
+      }
     }
   } finally {
     reader.cancel().catch(() => undefined);
