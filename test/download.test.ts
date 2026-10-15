@@ -95,7 +95,7 @@ test("downloadURL rejects invalid redirects", async () => {
   const cases = [
     [new Response(null, { status: 307 }), "export redirect has no valid location"],
     [redirect("http://storage.test/x"), "export redirect does not use https"],
-    [redirect("ftp://storage.test/x"), "export redirect does not use https"],
+    [redirect("ftp://storage.test/x"), "export redirect has no valid location"],
     [redirect("https://user:pass@storage.test/x"), "export redirect has no valid location"],
     [new Response("{}", { status: 200 }), "expected a redirect to the export, got status 200"],
   ] as const;
@@ -150,8 +150,8 @@ test("download follows safe storage redirects only", async () => {
 
   const cases = [
     ["http://storage.test/b", "export redirect does not use https"],
-    ["ftp://storage.test/b", "export redirect has an unsupported location"],
-    ["https://user:pass@storage.test/b", "export redirect has an unsupported location"],
+    ["ftp://storage.test/b", "export redirect has no valid location"],
+    ["https://user:pass@storage.test/b", "export redirect has no valid location"],
   ] as const;
   for (const [location, message] of cases) {
     const { fetch, requests } = storageStub(() => redirect(location, 302));

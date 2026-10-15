@@ -145,14 +145,12 @@ export class Attempt {
 }
 
 export class Transport {
-  readonly baseURL: URL;
   readonly #config: TransportConfig;
   readonly #base: string;
   readonly #headers: Headers;
 
   constructor(config: TransportConfig) {
     this.#config = config;
-    this.baseURL = config.baseURL;
     this.#base = (config.baseURL.origin + config.baseURL.pathname).replace(/\/+$/, "");
     this.#headers = new Headers({ "x-api-key": config.apiKey, "user-agent": config.userAgent });
   }
@@ -307,15 +305,7 @@ export class Transport {
       if (redirects === MAX_STORAGE_REDIRECTS) {
         throw new SynthientError("too many export redirects");
       }
-      const location = response.headers.get("location");
-      const next = location === null ? null : URL.parse(location, url.href);
-      if (!isHTTP(next) || next.username || next.password) {
-        throw new SynthientError("export redirect has an unsupported location");
-      }
-      if (url.protocol === "https:" && next.protocol !== "https:") {
-        throw new SynthientError("export redirect does not use https");
-      }
-      url = next;
+      url = redirectTarget(url, response);
     }
   }
 
@@ -344,6 +334,22 @@ export class Transport {
 /** Reports whether a parsed URL uses http or https. */
 export function isHTTP(url: URL | null): url is URL {
   return url?.protocol === "https:" || url?.protocol === "http:";
+}
+
+/**
+ * Resolves a redirect's location against `from`, allowing only an http(s) URL without
+ * credentials that does not downgrade from https.
+ */
+export function redirectTarget(from: URL, response: Response): URL {
+  const location = response.headers.get("location");
+  const target = location === null ? null : URL.parse(location, from.href);
+  if (!isHTTP(target) || target.username || target.password) {
+    throw new SynthientError("export redirect has no valid location");
+  }
+  if (from.protocol === "https:" && target.protocol !== "https:") {
+    throw new SynthientError("export redirect does not use https");
+  }
+  return target;
 }
 
 /** Waits for a backoff delay, rejecting with the signal's reason if it aborts. */

@@ -1,6 +1,6 @@
 import { SynthientError, isObject } from "./errors.ts";
 import { limitQuery } from "./options.ts";
-import { drain, type RequestOptions, type Transport } from "./transport.ts";
+import { drain, redirectTarget, type RequestOptions, type Transport } from "./transport.ts";
 import type { Export, ExportMeta, ExportPage } from "./types.ts";
 
 const MAX_EVENT_SIZE = 16 << 20;
@@ -158,16 +158,7 @@ export class Feed<T> {
     if (response.status < 300) {
       throw new SynthientError(`expected a redirect to the export, got status ${response.status}`);
     }
-
-    const header = response.headers.get("location");
-    const location = header === null ? null : URL.parse(header, this.#transport.url(request));
-    if (!location || location.username || location.password) {
-      throw new SynthientError("export redirect has no valid location");
-    }
-    if (location.protocol !== "https:" && location.protocol !== this.#transport.baseURL.protocol) {
-      throw new SynthientError("export redirect does not use https");
-    }
-    return location;
+    return redirectTarget(new URL(this.#transport.url(request)), response);
   }
 
   /**
