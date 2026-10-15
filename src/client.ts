@@ -60,8 +60,8 @@ export interface ClientOptions {
   onResponse?: ((metadata: ResponseMetadata) => void) | undefined;
 }
 
-/** Optional parameters for {@link Synthient.lookupDomain}. */
-export interface LookupDomainParams {
+/** Options for {@link Synthient.lookupDomain}. */
+export interface LookupDomainOptions extends RequestOptions {
   /** Caps the number of recent events returned. The API default is 50, and it clamps values above 1000. */
   limit?: number | undefined;
 }
@@ -201,11 +201,7 @@ export class Synthient {
    * resolves with status "inactive" and zeroed stats. Internationalized names must be
    * sent in Punycode. Each lookup costs one credit.
    */
-  async lookupDomain(
-    domain: string,
-    params?: LookupDomainParams,
-    options?: RequestOptions,
-  ): Promise<DomainInfo> {
+  async lookupDomain(domain: string, options?: LookupDomainOptions): Promise<DomainInfo> {
     if (
       typeof domain !== "string" ||
       domain === "" ||
@@ -218,7 +214,7 @@ export class Synthient {
     return this.#transport.json<DomainInfo>(
       {
         path: `/lookup/domain/${pathSegment(domain)}`,
-        query: limitQuery(params?.limit),
+        query: limitQuery(options?.limit),
         policy: "rateLimit",
       },
       options?.signal,

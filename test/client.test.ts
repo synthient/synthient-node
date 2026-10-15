@@ -161,8 +161,8 @@ test("types reject invalid calls", () => {
   const checks = async (client: Synthient) => {
     // @ts-expect-error lookupIP takes a string
     await client.lookupIP(8);
-    // @ts-expect-error lookupDomain takes params before options
-    await client.lookupDomain("example.com", { signal: AbortSignal.timeout(1) });
+    // @ts-expect-error lookupDomain takes one options object
+    await client.lookupDomain("example.com", { limit: 5 }, { signal: AbortSignal.timeout(1) });
     // @ts-expect-error request options have no timeout
     await client.account({ timeout: 5 });
     // @ts-expect-error unknown client option

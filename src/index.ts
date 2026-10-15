@@ -17,7 +17,7 @@ export {
   DEFAULT_BASE_URL,
   Synthient,
   type ClientOptions,
-  type LookupDomainParams,
+  type LookupDomainOptions,
 } from "./client.ts";
 export {
   APIConnectionError,
@@ -27,7 +27,7 @@ export {
   type APIErrorInit,
 } from "./errors.ts";
 export type * from "./events.ts";
-export { Feed, dailyExport, hourlyExport, type ListExportsParams } from "./feed.ts";
+export { Feed, dailyExport, hourlyExport, type ListExportsOptions } from "./feed.ts";
 export type { Fetch, RequestOptions, ResponseMetadata } from "./transport.ts";
 export { toDate } from "./types.ts";
 export type * from "./types.ts";

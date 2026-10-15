@@ -15,8 +15,8 @@ type Reviver = (key: string, value: unknown, context?: { source: string }) => un
 export const exactTunnelID: Reviver = (key, value, context) =>
   key === "tunnel_id" && typeof value === "number" && context ? context.source : value;
 
-/** Optional parameters for listing exports. */
-export interface ListExportsParams {
+/** Options for listing exports. */
+export interface ListExportsOptions extends RequestOptions {
   /** The page size. The API default is 100, and it clamps values above 500. */
   limit?: number | undefined;
   /** Continues a listing from a previous page's `next_cursor`. */
@@ -82,10 +82,10 @@ export class Feed<T> {
   }
 
   /** Returns one page of the feed's exports, newest first. Use `allExports` to iterate every page. */
-  async listExports(params?: ListExportsParams, options?: RequestOptions): Promise<ExportPage> {
-    const query = limitQuery(params?.limit);
-    if (params?.cursor) {
-      query.cursor = params.cursor;
+  async listExports(options?: ListExportsOptions): Promise<ExportPage> {
+    const query = limitQuery(options?.limit);
+    if (options?.cursor) {
+      query.cursor = options.cursor;
     }
 
     const page = await this.#transport.json<ExportPage>(
@@ -104,29 +104,22 @@ export class Feed<T> {
 
   /**
    * Iterates over the feed's exports, newest first, fetching pages lazily as iteration
-   * proceeds. Breaking out of the loop fetches no more pages. `params` is copied when
+   * proceeds. Breaking out of the loop fetches no more pages. `options` is copied when
    * `allExports` is called; errors, including invalid parameters, are thrown from the
    * iteration.
    */
-  allExports(
-    params?: ListExportsParams,
-    options?: RequestOptions,
-  ): AsyncGenerator<Export, void, undefined> {
-    return this.#allExports(params?.limit, params?.cursor, options);
-  }
-
-  async *#allExports(
-    limit: number | undefined,
-    cursor: string | undefined,
-    options: RequestOptions | undefined,
-  ): AsyncGenerator<Export, void, undefined> {
+  async *allExports({ limit, cursor, signal }: ListExportsOptions = {}): AsyncGenerator<
+    Export,
+    void,
+    undefined
+  > {
     const seen = new Set([cursor ?? ""]);
     for (;;) {
-      const page = await this.listExports({ limit, cursor }, options);
-      options?.signal?.throwIfAborted();
+      const page = await this.listExports({ limit, cursor, signal });
+      signal?.throwIfAborted();
       for (const item of page.feeds) {
         yield item;
-        options?.signal?.throwIfAborted();
+        signal?.throwIfAborted();
       }
       if (!page.next_cursor) {
         return;

@@ -73,7 +73,7 @@ test("aborting stops pagination and streams", async (t) => {
   const client = newClient({ baseURL: server.baseURL });
 
   const pages = new AbortController();
-  const exports = client.proxies.allExports(undefined, { signal: pages.signal });
+  const exports = client.proxies.allExports({ signal: pages.signal });
   assert.deepEqual((await exports.next()).value, EXPORT);
   const second = exports.next();
   pages.abort("pages");
@@ -122,9 +122,7 @@ test("aborting stops buffered exports and last-page completion", async () => {
   for (const feeds of [[EXPORT, EXPORT], [EXPORT]]) {
     const { fetch, requests } = stub(() => json(200, { feeds }));
     const controller = new AbortController();
-    const exports = newClient({ fetch }).proxies.allExports(undefined, {
-      signal: controller.signal,
-    });
+    const exports = newClient({ fetch }).proxies.allExports({ signal: controller.signal });
     await exports.next();
     controller.abort("stop");
 
