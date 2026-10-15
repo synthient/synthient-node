@@ -331,7 +331,6 @@ export class Transport {
   }
 }
 
-/** Reports whether a parsed URL uses http or https. */
 export function isHTTP(url: URL | null): url is URL {
   return url?.protocol === "https:" || url?.protocol === "http:";
 }

@@ -76,7 +76,6 @@ export interface IPInfo {
   ip: string;
   /** The network that announces the address. */
   network?: Network;
-  /** The address's geolocation. */
   location?: Location;
   /** The risk score and the proxy, VPN, and device observations for the address. */
   intelligence?: Intelligence;
@@ -86,17 +85,12 @@ export interface IPInfo {
 export interface Network {
   /** The autonomous system number, or 0 if the address is not routed. */
   asn: number;
-  /** The name of the internet service provider. */
   isp: string;
-  /** The network type. */
   type: NetworkType;
   /** The organization the address is registered to. */
   org?: string;
-  /** The network operator's domain. */
   domain?: string;
-  /** The operator's abuse contact email. */
   abuse_email?: string;
-  /** The operator's abuse contact phone number. */
   abuse_phone?: string;
 }
 
@@ -106,7 +100,6 @@ export interface Location {
   country: string;
   /** The state or region. */
   state: string;
-  /** The city. */
   city: string;
   /** The IANA time zone name. */
   timezone: string;
@@ -114,7 +107,6 @@ export interface Location {
   latitude: number;
   /** The longitude in degrees. */
   longitude: number;
-  /** The geohash of the coordinates. */
   geo_hash: string;
 }
 
@@ -147,11 +139,9 @@ export interface Provider {
 
 /** A device type seen behind an address. */
 export interface Device {
-  /** The operating system. */
   os: DeviceOS;
   /** The operating system version. */
   version: string;
-  /** When the device was last seen. */
   last_seen: UnixTime;
 }
 
@@ -191,9 +181,7 @@ export interface DomainInfo {
 
 /** Aggregate event counts for a domain. */
 export interface DomainStats {
-  /** The number of events in the last 24 hours. */
   events_24h: number;
-  /** The number of events in the last 30 days. */
   total_events_30d: number;
 }
 
@@ -211,7 +199,6 @@ export interface UniqueIPs {
 export interface TimeSeriesPoint {
   /** The start of the day. */
   date: UnixTime;
-  /** The number of events that day. */
   events: number;
   /** The number of distinct source addresses that day. */
   unique_ips: number;
@@ -219,9 +206,7 @@ export interface TimeSeriesPoint {
 
 /** An autonomous system and its event count. */
 export interface ASNCount {
-  /** The autonomous system number. */
   asn: number;
-  /** The number of events from the network. */
   events: number;
 }
 
@@ -245,9 +230,7 @@ export interface PortCount {
 export interface CountryCount {
   /** The ISO 3166-1 alpha-2 country code. */
   country_code: string;
-  /** The number of events from the country. */
   events: number;
-  /** The number of distinct addresses from the country. */
   unique_ips: number;
 }
 
@@ -267,11 +250,9 @@ export interface ActivityStats {
 
 /** A single honeypot event for a domain. */
 export interface DomainEvent {
-  /** When the event happened. */
   timestamp: UnixTime;
   /** The full proxy exit address that carried the event. Despite the name, it is not masked. */
   source_ip_masked: string;
-  /** The subdomain that was targeted. */
   target_subdomain: string;
   /** The source country. */
   country_code: string;
@@ -281,13 +262,9 @@ export interface DomainEvent {
 
 /** The account that owns an API key. */
 export interface Account {
-  /** The account email address. */
   email: string;
-  /** The account holder's first name. */
   first_name: string;
-  /** The account holder's last name. */
   last_name: string;
-  /** The organization the account belongs to. */
   organization: Organization;
   /** The permissions granted to the key. */
   scopes: Scope[];
@@ -299,9 +276,7 @@ export interface Account {
 
 /** The organization an account belongs to. */
 export interface Organization {
-  /** The organization ID. */
   id: string;
-  /** The organization name. */
   name: string;
   /** The account's role in the organization. */
   relation: "OWNER" | "ADMIN" | "MEMBER";
@@ -319,7 +294,6 @@ export interface LookupQuota {
 export interface AccountAPIKey {
   /** The key ID. It is not the secret key. */
   id: string;
-  /** The key name. */
   name: string;
   /** When the key was created, as an RFC 3339 string. */
   created_at: string;
@@ -351,11 +325,9 @@ export interface Export {
   hour?: number | null;
   /** The size of the parquet file in bytes. */
   size_bytes: number;
-  /** The number of rows in the parquet file. */
   row_count: number;
   /** The hex-encoded SHA-256 of the parquet file. */
   checksum: string;
-  /** When the export was produced. */
   created_at: UnixTime;
   /** The API path of the export's download, including the version prefix. */
   download_path: string;
@@ -363,25 +335,21 @@ export interface Export {
 
 /** A parquet export's metadata, without its contents. */
 export interface ExportMeta {
-  /** Identifies the export. */
   id: string;
   /** The feed's stream identifier. */
   stream: string;
   /** Whether the export covers a UTC day or a UTC hour. */
   kind: "hourly" | "daily";
-  /** The file format. */
   format: "parquet";
   /** The start of the export: midnight UTC for a daily export, the hour for an hourly one. */
   date: UnixTime;
   /** The UTC hour of an hourly export, absent or null for a daily export. */
   hour?: number | null;
-  /** The number of rows in the parquet file. */
   rows: number;
   /** The size of the parquet file in bytes. */
   size: number;
   /** The hex-encoded SHA-256 of the parquet file. */
   checksum: string;
-  /** When the export was produced. */
   created_at: UnixTime;
   /** The parquet columns. */
   schema: ParquetSchema;
@@ -395,8 +363,6 @@ export interface ParquetSchema {
 
 /** A column of a parquet export. */
 export interface ParquetColumn {
-  /** The column name. */
   name: string;
-  /** The column type. */
   type: ParquetType;
 }

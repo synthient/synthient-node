@@ -31,13 +31,10 @@ export interface ProxyEvent {
   ip?: string;
   /** The proxy service tag. */
   provider?: string;
-  /** The proxy category. */
   type?: ServiceCategory;
   /** The ISO 3166-1 alpha-2 country of the address. */
   country_code?: string;
-  /** The autonomous system number of the address. */
   asn?: number;
-  /** When the proxy was seen. */
   timestamp?: UnixTime;
 }
 
@@ -49,7 +46,6 @@ export interface AnonymizerEvent {
   range_end?: string;
   /** The service tag. */
   provider?: string;
-  /** The service category. */
   type?: ServiceCategory;
   /** The ISO 3166-1 alpha-2 country of `range_start`. */
   country_code?: string;
@@ -63,21 +59,15 @@ export interface AnonymizerEvent {
 export interface TorrentEvent {
   /** The hex-encoded SHA-1 info hash. */
   info_hash?: string;
-  /** The torrent name. */
   name?: string;
-  /** The torrent's magnet link. */
   magnet_uri?: string;
   /** The total size of the torrent's files in bytes. */
   total_size?: number;
   /** The piece size in bytes. */
   piece_length?: number;
-  /** The number of files in the torrent. */
   file_count?: number;
-  /** The torrent's files. */
   files?: TorrentFile[];
-  /** The peers seen sharing the torrent. */
   peers?: TorrentPeer[];
-  /** When the torrent was seen. */
   timestamp?: UnixTime;
 }
 
@@ -91,9 +81,7 @@ export interface TorrentFile {
 
 /** A peer seen sharing a torrent. */
 export interface TorrentPeer {
-  /** The peer's address. */
   ip?: string;
-  /** The peer's port. */
   port?: number;
   /** Where the peer was found, such as "DHT", "PEX", or "tracker". */
   source?: string;
@@ -105,17 +93,13 @@ export interface TorrentPeer {
 export interface JA4TEvent {
   /** The address the fingerprint was seen from. */
   ip?: string;
-  /** The JA4T fingerprint. */
   ja4t?: string;
   /** The service tag of the address. */
   provider?: string;
-  /** The service category. */
   type?: ServiceCategory;
   /** The ISO 3166-1 alpha-2 country of the address. */
   country_code?: string;
-  /** The autonomous system number of the address. */
   asn?: number;
-  /** When the fingerprint was seen. */
   timestamp?: UnixTime;
 }
 
@@ -145,7 +129,6 @@ export interface HeliosHTTPEvent {
   domain: string;
   /** The destination port. */
   port: number;
-  /** The capture protocol. */
   protocol: "http";
   /** The capturing sensor. */
   meta: HeliosMeta;
@@ -157,13 +140,11 @@ export interface HeliosHTTPEvent {
 
 /** A parsed HTTP request. */
 export interface HTTPRequestDetails {
-  /** The request method. */
   method?: string;
   /** The request target. */
   uri?: string;
   /** The HTTP version, such as "HTTP/1.1". */
   version?: string;
-  /** The request headers. */
   headers?: Record<string, string>;
 }
 
@@ -181,7 +162,6 @@ export interface HeliosHTTPSEvent {
   domain: string;
   /** The destination port. */
   port: number;
-  /** The capture protocol. */
   protocol: "https";
   /** The capturing sensor. */
   meta: HeliosMeta;
@@ -206,31 +186,22 @@ export interface TLSClientHello {
   session_id?: string;
   /** The session ID length in bytes. */
   session_id_length?: number;
-  /** The offered cipher suites. */
   cipher_suites?: TLSCodeName[];
-  /** The offered compression methods. */
   compression_methods?: number[];
   /** The extensions in wire order. */
   extensions?: TLSExtension[];
   /** The server_name extension value. */
   sni?: string;
-  /** The offered ALPN protocols. */
   alpn?: string[];
-  /** The supported TLS versions. */
   supported_versions?: string[];
   /** The supported key exchange groups. */
   supported_groups?: TLSCodeName[];
-  /** The supported signature algorithms. */
   signature_algorithms?: TLSCodeName[];
-  /** The groups with key shares. */
   key_share_groups?: string[];
-  /** The supported elliptic curve point formats. */
   ec_point_formats?: string[];
-  /** The supported PSK key exchange modes. */
   psk_key_exchange_modes?: string[];
   /** The supported certificate compression algorithms. */
   compress_certificate?: string[];
-  /** Whether the ClientHello contains GREASE values. */
   has_grease?: boolean;
   /** Whether the application_settings extension is present. */
   application_settings?: boolean;
@@ -252,17 +223,13 @@ export interface TLSClientHello {
 
 /** A TLS registry value, such as a cipher suite or group, with its name. */
 export interface TLSCodeName {
-  /** The registry code. */
   code?: number;
-  /** The registry name. */
   name?: string;
 }
 
 /** A TLS extension in a ClientHello. */
 export interface TLSExtension {
-  /** The extension type code. */
   code?: number;
-  /** The extension name. */
   name?: string;
   /** The extension data length in bytes. */
   length?: number;
@@ -281,7 +248,6 @@ export interface HeliosDNSEvent {
   domain: string;
   /** The destination port. */
   port: number;
-  /** The capture protocol. */
   protocol: "dns";
   /** The capturing sensor. */
   meta: HeliosMeta;

@@ -140,7 +140,6 @@ export function parseRetryAfter(header: string | null): number | undefined {
   return Number.isFinite(at) ? Math.max(at - Date.now(), 0) : undefined;
 }
 
-/** Reports whether a parsed JSON value is an object rather than an array or primitive. */
 export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
