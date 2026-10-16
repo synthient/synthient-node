@@ -15,8 +15,9 @@ const MAX_BACKOFF = 30_000;
 const MAX_RETRY_AFTER = 60_000;
 const MAX_STORAGE_REDIRECTS = 10;
 
-// Transport failures worth retrying on free requests. Anything else, such as a TLS
-// certificate error or an error from a custom fetch, fails without a retry.
+// Transport failures worth retrying on account and feed requests, matched anywhere in
+// the error's cause chain, so an error from a custom fetch is retried when it carries one
+// of these codes. Anything else, such as a TLS certificate error, fails without a retry.
 const TRANSIENT_CODES = new Set([
   "ECONNRESET",
   "ECONNREFUSED",

@@ -70,9 +70,10 @@ export interface LookupDomainOptions extends RequestOptions {
  * A Synthient API client. It performs no network I/O until a method is called, and a
  * single client should be reused for every request.
  *
- * Requests that cost no credits are retried on 500, 502, 503, and 504 responses, on
- * rate limits, and on connection failures. Billed lookups are retried only on rate
- * limits, which the API returns before doing any work. A rate limit is a 429 with
+ * Account and feed requests to the API are retried on 500, 502, 503, and 504 responses,
+ * on rate limits, and on timeouts and connection failures. Lookups and health are
+ * retried only on rate limits, which the API returns before doing any work. A
+ * download's request to the storage host is not retried. A rate limit is a 429 with
  * Retry-After; a 429 without it means the key's monthly budget or concurrent stream
  * limit is spent, and is not retried. Retries back off exponentially with jitter and
  * honor Retry-After.

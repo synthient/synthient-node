@@ -13,9 +13,10 @@ export class SynthientError extends Error {
 }
 
 /**
- * The request got no response, for example because of a DNS, connection, or TLS failure.
- * The underlying error is available as `cause`, except for storage downloads where
- * it is omitted to keep presigned URLs out of errors.
+ * The connection failed before a response arrived or while its body was being read, for
+ * example because of a DNS, connection, or TLS failure, or a stream that dropped. The
+ * underlying error is available as `cause`, except when the storage host that serves an
+ * export download fails, where it is omitted to keep presigned URLs out of errors.
  */
 export class APIConnectionError extends SynthientError {
   override name = "APIConnectionError";
