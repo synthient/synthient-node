@@ -65,7 +65,7 @@ export class Feed<T> {
    * Streams the feed's real-time events. The connection opens on the first `next()`,
    * so connection errors are thrown there, including an APIError with status 403 for a
    * missing scope or 429 for too many concurrent streams.
-   * The server closes each stream after about 30 minutes, which ends the iteration
+   * The server closes each stream after up to 30 minutes, which ends the iteration
    * normally; any other failure throws. Breaking out of the loop closes the connection.
    *
    * The API has no resume cursor, so events sent between connections are missed. Call
