@@ -26,9 +26,7 @@ while (!controller.signal.aborted) {
       throw error;
     }
     console.error("stream:", error);
+    // Pause after a failure so a failing stream doesn't reconnect in a tight loop.
+    await sleep(2000);
   }
-
-  // The server closes each stream after about 30 minutes. Pause before reconnecting so
-  // repeated failures stay under the connection rate limit.
-  await sleep(2000);
 }
