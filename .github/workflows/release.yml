@@ -1,4 +1,4 @@
-name: Release
+name: release
 
 on:
   push:
@@ -11,19 +11,24 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: release
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+      - name: Check the tag matches the package version
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::$GITHUB_REF_NAME does not match the package version $version"
+            exit 1
+          fi
       - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test --if-present
-      - name: Check package version
-        run: node -e 'if (require("./package.json").version !== process.env.GITHUB_REF_NAME.slice(1)) process.exit(1)'
-      - run: npm publish --access public
+      - run: npm test
+      - run: npm publish
