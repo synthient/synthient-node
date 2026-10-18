@@ -16,6 +16,17 @@ test("an already aborted signal sends nothing", async (t) => {
   assert.equal(server.requests.length, 0);
 });
 
+test("an empty batch with an already aborted signal rejects with its reason", async () => {
+  const { fetch, requests } = stub(() => json(200, { results: [] }));
+  const reason = new Error("stop");
+
+  await assert.rejects(
+    newClient({ fetch }).lookupIPs([], { signal: AbortSignal.abort(reason) }),
+    (error) => error === reason,
+  );
+  assert.equal(requests.length, 0);
+});
+
 test("aborting rejects with the signal's reason", async (t) => {
   const server = await serve(t, (req, res) => {
     if (req.url === "/api/v4/account/me") {

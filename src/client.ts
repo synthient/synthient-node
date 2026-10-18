@@ -179,6 +179,7 @@ export class Synthient {
       }
     }
     if (addresses.length === 0) {
+      options?.signal?.throwIfAborted();
       return [];
     }
 
