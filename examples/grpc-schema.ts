@@ -17,7 +17,7 @@ try {
 } catch (error) {
   const hint = explain(error);
   if (error instanceof SchemaError && hint !== "") {
-    throw new Error(`${hint}: ${error.message}`, { cause: error });
+    throw new Error(`${hint} ${error.message}`, { cause: error });
   }
   throw error;
 }
