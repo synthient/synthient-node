@@ -236,9 +236,8 @@ export async function fetchSchema(options: FetchSchemaOptions = {}): Promise<Sch
 }
 
 /**
- * Converts `raw` to host:port form and returns it with the host name used for TLS. It
- * accepts host:port, a bare host (port 443 is assumed), and grpc:// or https:// URLs.
- * An empty `raw` uses {@link DEFAULT_ENDPOINT}.
+ * Converts `raw`, in any form {@link FetchSchemaOptions.endpoint} accepts, to host:port
+ * and returns it with the host name used for TLS.
  */
 export function normalizeEndpoint(raw: string): { endpoint: string; host: string } {
   let value = raw.trim() || DEFAULT_ENDPOINT;

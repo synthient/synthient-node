@@ -120,9 +120,8 @@ export interface HeliosHTTPEvent {
   /** When the request was captured, in Unix milliseconds. */
   timestamp: UnixTime;
   /**
-   * Identifies the proxy tunnel the request arrived through. It is an unsigned 64-bit
-   * integer on the wire, kept as its exact decimal digits because a number loses
-   * precision above `Number.MAX_SAFE_INTEGER`.
+   * The proxy tunnel the request arrived through, as the exact decimal digits of an
+   * unsigned 64-bit integer.
    */
   tunnel_id: string;
   /** The destination host the tunnel was opened to. */
@@ -153,9 +152,8 @@ export interface HeliosHTTPSEvent {
   /** When the handshake was captured, in Unix milliseconds. */
   timestamp: UnixTime;
   /**
-   * Identifies the proxy tunnel the handshake arrived through. It is an unsigned 64-bit
-   * integer on the wire, kept as its exact decimal digits because a number loses
-   * precision above `Number.MAX_SAFE_INTEGER`.
+   * The proxy tunnel the handshake arrived through, as the exact decimal digits of an
+   * unsigned 64-bit integer.
    */
   tunnel_id: string;
   /** The destination host the tunnel was opened to. */
@@ -239,10 +237,7 @@ export interface TLSExtension {
 export interface HeliosDNSEvent {
   /** When the tunnel was captured, in Unix milliseconds. */
   timestamp: UnixTime;
-  /**
-   * Identifies the proxy tunnel. It is an unsigned 64-bit integer on the wire, kept as its
-   * exact decimal digits because a number loses precision above `Number.MAX_SAFE_INTEGER`.
-   */
+  /** The proxy tunnel, as the exact decimal digits of an unsigned 64-bit integer. */
   tunnel_id: string;
   /** The destination host the tunnel was opened to. */
   domain: string;
@@ -265,9 +260,9 @@ export interface HeliosADBEvent {
   /** The shell command as plain text. Invalid UTF-8 bytes become U+FFFD. */
   command: string;
   /**
-   * The SHA-256 the sensor assigns to the session's payload, as 64 hex characters. It
-   * is not a hash of `command`: every command in a session shares it, and sessions that
-   * replay the same script share it too.
+   * The SHA-256 the sensor assigns to the session's payload, as 64 hex characters. It is
+   * not a hash of `command`; every command in a session shares it, as do sessions that
+   * replay the same script.
    */
   hash: string;
 }

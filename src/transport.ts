@@ -15,9 +15,9 @@ const MAX_BACKOFF = 30_000;
 const MAX_RETRY_AFTER = 60_000;
 const MAX_STORAGE_REDIRECTS = 10;
 
-// Transport failures worth retrying on account and feed requests, matched anywhere in
-// the error's cause chain, so an error from a custom fetch is retried when it carries one
-// of these codes. Anything else, such as a TLS certificate error, fails without a retry.
+// Transport failures retried on account and feed requests, matched anywhere in the
+// error's cause chain, including errors from a custom fetch. Anything else, such as a
+// TLS certificate error, is not retried.
 const TRANSIENT_CODES = new Set([
   "ECONNRESET",
   "ECONNREFUSED",
@@ -53,8 +53,8 @@ export interface ResponseMetadata {
 /** Options for a single call. */
 export interface RequestOptions {
   /**
-   * Cancels the call. The call rejects with the signal's reason, as `fetch` does. Use
-   * `AbortSignal.timeout(ms)` to bound a whole call, including retries.
+   * Cancels the call, which rejects with the signal's reason. Use `AbortSignal.timeout(ms)`
+   * to bound a whole call, including retries.
    */
   signal?: AbortSignal | undefined;
 }
@@ -110,9 +110,9 @@ export class Attempt {
   }
 
   /**
-   * Waits for work that reads from the network. The attempt times out if it takes
-   * longer than the timeout. A caller abort rejects with the caller's reason, the
-   * timeout with APITimeoutError, and any other failure with APIConnectionError.
+   * Waits at most the timeout for work that reads from the network. A caller abort
+   * rejects with the caller's reason, the timeout with APITimeoutError, and any other
+   * failure with APIConnectionError.
    */
   async watch<T>(work: Promise<T>): Promise<T> {
     const timer = setTimeout(() => {

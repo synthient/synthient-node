@@ -39,14 +39,13 @@ export interface ClientOptions {
   /**
    * The longest time in milliseconds to wait for response headers or for the next part
    * of a body, including streams and downloads. Defaults to 60,000. It does not limit a
-   * whole call; pass `AbortSignal.timeout(ms)` as a call's `signal` for that.
+   * whole call; see {@link RequestOptions.signal}.
    */
   timeout?: number | undefined;
   /**
-   * The fetch implementation. Defaults to the global `fetch`. A custom fetch must not
-   * follow redirects or replay requests itself; the client relies on seeing each
-   * redirect to keep the API key away from other hosts. It must honor `init.signal`,
-   * which carries both the `timeout` and a call's `signal`.
+   * The fetch implementation. Defaults to the global `fetch`. A custom fetch must honor
+   * `init.signal` and must not follow redirects or replay requests itself; the client
+   * handles each redirect to keep the API key away from other hosts.
    */
   fetch?: Fetch | undefined;
   /** Appended to the User-Agent header, such as "my-app/1.2". */
@@ -67,8 +66,8 @@ export interface LookupDomainOptions extends RequestOptions {
 }
 
 /**
- * A Synthient API client. It performs no network I/O until a method is called, and a
- * single client should be reused for every request.
+ * A Synthient API client. Creating one does no network I/O. Reuse one client for every
+ * request.
  *
  * Account and feed requests to the API are retried on 500, 502, 503, and 504 responses,
  * on rate limits, and on timeouts and connection failures. Lookups and health are
@@ -97,10 +96,7 @@ export class Synthient {
   readonly heliosADB: Feed<HeliosADBEvent>;
   readonly #transport: Transport;
 
-  /**
-   * Creates a client. It throws a TypeError or RangeError if the API key is missing or
-   * an option is invalid.
-   */
+  /** Throws a TypeError or RangeError if the API key is missing or an option is invalid. */
   constructor(options: ClientOptions = {}) {
     const apiKey = resolveAPIKey(options.apiKey);
     if (apiKey === "") {
@@ -165,11 +161,9 @@ export class Synthient {
   /**
    * Looks up as many as 1000 addresses in one request, billed as ceil(n × 0.9) credits
    * for the n distinct usable addresses. Private and reserved addresses are skipped and
-   * duplicates collapse into one result, so there can be fewer results than addresses.
-   * Results follow the order each address first appears, and `ip` holds its canonical
-   * form, so match results by `ip` rather than by position. A batch with no usable
-   * address rejects with an APIError with status 422. An empty list returns [] without
-   * a request.
+   * duplicates collapse, so match results by their canonical `ip`, not by position.
+   * Results follow the order each address first appears. A batch with no usable address
+   * rejects with an APIError with status 422. An empty list returns [] without a request.
    */
   async lookupIPs(ips: Iterable<string>, options?: RequestOptions): Promise<IPInfo[]> {
     const addresses = Array.from(ips);
@@ -235,9 +229,8 @@ export class Synthient {
   }
 
   /**
-   * Resolves if the API and its dependencies are healthy. Unlike other free requests,
-   * it is retried only on rate limits, so an unhealthy API rejects with an APIError
-   * with status 503 and a connection failure rejects at once.
+   * Resolves if the API and its dependencies are healthy. An unhealthy API rejects at
+   * once with an APIError with status 503.
    */
   async health(options?: RequestOptions): Promise<void> {
     await this.#transport.json({ path: "/health", policy: "rateLimit" }, options?.signal);

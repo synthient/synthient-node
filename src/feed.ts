@@ -9,8 +9,8 @@ const EXPORT_ID = /^(\d{4})-(\d{2})-(\d{2})(?:\/(\d{1,2}))?$/;
 type Reviver = (key: string, value: unknown, context?: { source: string }) => unknown;
 
 /**
- * Keeps each `tunnel_id` as the exact decimal digits sent on the wire. Helios tunnel IDs
- * are unsigned 64-bit integers, which a number cannot represent above 2^53.
+ * Keeps each `tunnel_id` as the exact decimal digits sent on the wire, since these
+ * unsigned 64-bit IDs lose precision as numbers above 2^53.
  */
 export const exactTunnelID: Reviver = (key, value, context) =>
   key === "tunnel_id" && typeof value === "number" && context ? context.source : value;
@@ -63,14 +63,12 @@ export class Feed<T> {
 
   /**
    * Streams the feed's real-time events. The connection opens on the first `next()`,
-   * so connection errors are thrown there, including an APIError with status 403 for a
-   * missing scope or 429 for too many concurrent streams.
-   * The server closes each stream after up to 30 minutes, which ends the iteration
-   * normally; any other failure throws. Breaking out of the loop closes the connection.
-   *
-   * The API has no resume cursor, so events sent between connections are missed. Call
-   * `stream` again to reconnect. The client's `timeout` bounds the gap between data,
-   * and the server sends a keepalive about every 15 seconds.
+   * which throws any connection error, such as an APIError with status 403 for a
+   * missing scope. The server closes each stream after up to 30 minutes, which ends the
+   * iteration normally; any other failure throws. Breaking out of the loop closes the
+   * connection. Events sent between connections are missed, so call `stream` again to
+   * reconnect. The client's `timeout` bounds the gap between data, and the server sends
+   * a keepalive about every 15 seconds.
    */
   async *stream(options?: RequestOptions): AsyncGenerator<T, void, undefined> {
     const signal = options?.signal;
@@ -103,10 +101,9 @@ export class Feed<T> {
   }
 
   /**
-   * Iterates over the feed's exports, newest first, fetching pages lazily as iteration
-   * proceeds. Breaking out of the loop fetches no more pages. `options` is copied when
-   * `allExports` is called; errors, including invalid parameters, are thrown from the
-   * iteration.
+   * Iterates over the feed's exports, newest first, fetching pages lazily. `options` is
+   * copied when `allExports` is called; errors, including invalid parameters, are
+   * thrown from the iteration.
    */
   async *allExports({ limit, cursor, signal }: ListExportsOptions = {}): AsyncGenerator<
     Export,
@@ -173,10 +170,7 @@ export class Feed<T> {
   }
 }
 
-/**
- * Converts an export ID to its URL path: "latest", "YYYY-MM-DD", or "YYYY-MM-DD/H" with
- * the hour unpadded.
- */
+/** Converts an export ID to its URL path, with the hour unpadded. */
 function exportPath(id: string): string {
   if (id === "latest") {
     return id;

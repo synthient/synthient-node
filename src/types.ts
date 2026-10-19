@@ -59,10 +59,7 @@ export type ActivityCadence =
 export type ParquetType =
   "string" | "int64" | "uint32" | "uint64" | "bool" | "bytes" | (string & {});
 
-/**
- * Converts a {@link UnixTime} to a Date. Values of 1e12 or more are read as
- * milliseconds, since as seconds they would be tens of thousands of years away.
- */
+/** Converts a {@link UnixTime} to a Date, reading values of 1e12 or more as milliseconds. */
 export function toDate(timestamp: UnixTime): Date {
   return new Date(timestamp >= 1e12 ? timestamp : timestamp * 1000);
 }

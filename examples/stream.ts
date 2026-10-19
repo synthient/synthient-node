@@ -26,7 +26,7 @@ while (!controller.signal.aborted) {
       throw error;
     }
     console.error("stream:", error);
-    // Pause after a failure so a failing stream doesn't reconnect in a tight loop.
+    // Avoid reconnecting in a tight loop.
     await sleep(2000);
   }
 }
