@@ -110,6 +110,17 @@ test("stream rejects invalid and oversized events", async () => {
   }
 });
 
+test("stream limits multibyte events by their byte size", async () => {
+  const body = JSON.stringify({ provider: "é".repeat(9 << 20) });
+  for (const chunks of [[body + "\n"], [body.slice(0, 1 << 20), body.slice(1 << 20)]]) {
+    const { fetch } = stub(() => chunked(chunks));
+    await assert.rejects(collect(newClient({ fetch }).proxies.stream()), {
+      name: "SynthientError",
+      message: `stream event exceeds ${16 << 20} bytes`,
+    });
+  }
+});
+
 test("stream reports a failed handshake on the first next()", async () => {
   const { fetch, requests } = stub(() =>
     problem(403, { detail: "Requires one of: PROXY_FIREHOSE" }),

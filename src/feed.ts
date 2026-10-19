@@ -214,7 +214,10 @@ async function* ndjson<T>(
       const lines = decoder.decode(value, { stream: !done }).split("\n");
       lines[0] = pending + (lines[0] ?? "");
       pending = done ? "" : (lines.pop() ?? "");
-      if (pending.length > MAX_EVENT_SIZE || lines.some((line) => line.length > MAX_EVENT_SIZE)) {
+      if (
+        Buffer.byteLength(pending) > MAX_EVENT_SIZE ||
+        lines.some((line) => Buffer.byteLength(line) > MAX_EVENT_SIZE)
+      ) {
         throw new SynthientError(`stream event exceeds ${MAX_EVENT_SIZE} bytes`);
       }
       for (const line of lines) {
