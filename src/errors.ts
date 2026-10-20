@@ -30,7 +30,6 @@ export class APITimeoutError extends APIConnectionError {
   override name = "APITimeoutError";
 }
 
-/** The fields of an {@link APIError}. */
 export interface APIErrorInit {
   status: number;
   type?: string | undefined;
@@ -81,8 +80,8 @@ export class APIError extends SynthientError {
 }
 
 /**
- * Builds an APIError from a response and its bounded body. Plain text, HTML, and
- * malformed problem details still keep the status, request ID, and Retry-After.
+ * Plain text, HTML, and malformed problem details still keep the status, request ID, and
+ * Retry-After.
  */
 export function apiError(response: Response, body: Uint8Array, cause?: unknown): APIError {
   const decoded = new TextDecoder().decode(body);

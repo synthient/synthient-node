@@ -29,7 +29,6 @@ const spec = JSON.parse(
   readFileSync(new URL("../.sdkgen/openapi.json", import.meta.url), "utf8"),
 ) as Spec;
 
-// Each spec schema and the SDK interface that models it.
 const MODELS: Record<string, string> = {
   AccountInfoResponse: "Account",
   AccountAPIKey: "AccountAPIKey",
@@ -80,7 +79,6 @@ const EXACT_INTEGERS = new Set([
   "HoneypotDNSStreamEntry.tunnel_id",
 ]);
 
-// Schemas the SDK deliberately does not model, with the reason.
 const UNMODELED: Record<string, string> = {
   IpBatchRequest: "lookupIPs encodes the request body",
   IpBatchResponse: "lookupIPs returns its results array",

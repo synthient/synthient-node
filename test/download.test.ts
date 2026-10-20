@@ -25,7 +25,6 @@ import {
 const PRESIGNED =
   "https://storage.test/proxies/2026-05-07.parquet?X-Amz-Signature=secret-signature";
 
-/** Answers API requests with a redirect to PRESIGNED and storage requests with `storage`. */
 function storageStub(storage: (request: Recorded, index: number) => Response) {
   let storageIndex = 0;
   return stub((request) => {

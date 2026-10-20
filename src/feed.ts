@@ -15,7 +15,6 @@ type Reviver = (key: string, value: unknown, context?: { source: string }) => un
 export const exactTunnelID: Reviver = (key, value, context) =>
   key === "tunnel_id" && typeof value === "number" && context ? context.source : value;
 
-/** Options for listing exports. */
 export interface ListExportsOptions extends RequestOptions {
   /** The page size. The API default is 100, and it clamps values above 500. */
   limit?: number | undefined;
@@ -189,10 +188,7 @@ function exportPath(id: string): string {
   throw new TypeError("invalid export ID");
 }
 
-/**
- * Parses an NDJSON body into its JSON object events, skipping blank lines. Canceling
- * the iteration cancels the body.
- */
+/** Blank lines are keepalives. A final line without a newline is still an event. */
 async function* ndjson<T>(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal | undefined,

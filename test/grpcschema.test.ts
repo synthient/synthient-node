@@ -23,7 +23,6 @@ const METHOD = "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo";
 
 type Handler = (call: grpc.ServerDuplexStream<unknown, unknown>) => void;
 
-/** Starts a plaintext server; returns its address and the x-api-key metadata of each call. */
 async function start(
   t: TestContext,
   register: (server: grpc.Server, keys: string[][]) => void,

@@ -55,10 +55,7 @@ export interface Recorded {
   body: string;
 }
 
-/**
- * Returns a fetch that records each request and answers with `handler`. Responses get
- * the request URL, as they do from a real fetch.
- */
+/** Responses get the request URL, as they do from a real fetch. */
 export function stub(handler: (request: Recorded, index: number) => Response | Promise<Response>): {
   fetch: Fetch;
   requests: Recorded[];
@@ -112,7 +109,6 @@ export function rateLimited(retryAfter = "0"): Response {
   return problem(429, {}, { "retry-after": retryAfter });
 }
 
-/** A response whose body is sent as exactly these chunks. */
 export function chunked(chunks: (string | Uint8Array)[], status = 200): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -126,7 +122,6 @@ export function chunked(chunks: (string | Uint8Array)[], status = 200): Response
   return new Response(body, { status });
 }
 
-/** Creates a client that never sleeps between retries unless given a `wait`. */
 export function newClient(
   options: ClientOptions = {},
   wait: Wait = () => Promise.resolve(),
@@ -135,7 +130,6 @@ export function newClient(
   return new Synthient(withWait);
 }
 
-/** Returns a wait that records each backoff delay instead of sleeping. */
 export function recordWaits(): [number[], Wait] {
   const waits: number[] = [];
   return [
@@ -159,13 +153,11 @@ export interface Server {
   requests: ServerRequest[];
 }
 
-/** Starts listening on a loopback port and returns the port. */
 export async function listen(server: NetServer): Promise<number> {
   await once(server.listen(0, "127.0.0.1"), "listening");
   return (server.address() as AddressInfo).port;
 }
 
-/** Starts a loopback HTTP server that is closed when the test ends. */
 export async function serve(
   t: TestContext,
   handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
@@ -191,10 +183,6 @@ export async function serve(
   return { origin, baseURL: `${origin}/api/v4`, requests };
 }
 
-/**
- * Starts a server that writes `chunk` every few milliseconds until the client
- * disconnects, and returns it with a promise that resolves on that disconnect.
- */
 export async function trickle(
   t: TestContext,
   chunk: string,
@@ -212,7 +200,6 @@ export async function trickle(
   return { server, closed };
 }
 
-/** Starts a server that redirects every request to `location`. */
 export function redirectTo(t: TestContext, location: string): Promise<Server> {
   return serve(t, (_, res) => {
     res.writeHead(307, { location });
@@ -220,7 +207,6 @@ export function redirectTo(t: TestContext, location: string): Promise<Server> {
   });
 }
 
-/** Sets SYNTHIENT_API_KEY for the rest of the test, or unsets it for undefined. */
 export function setAPIKeyEnv(t: TestContext, value: string | undefined): void {
   const set = (next: string | undefined) => {
     if (next === undefined) {
@@ -236,7 +222,6 @@ export function setAPIKeyEnv(t: TestContext, value: string | undefined): void {
   set(value);
 }
 
-/** Returns a loopback port that nothing listens on. */
 export async function closedPort(): Promise<number> {
   const server = http.createServer();
   const port = await listen(server);

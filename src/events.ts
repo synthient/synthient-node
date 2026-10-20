@@ -1,6 +1,6 @@
 import type { UnixTime } from "./types.ts";
 
-/** The category of a proxy, VPN, or other service seen on an address. New values may be added. */
+/** New values may be added. */
 export type ServiceCategory =
   | "FREE_VPN"
   | "COMMERCIAL_VPN"
@@ -25,7 +25,6 @@ export type ServiceCategory =
   | "INTERNET_SCANNER"
   | (string & {});
 
-/** A proxy sighting from the proxies feed. */
 export interface ProxyEvent {
   /** The proxy exit address. */
   ip?: string;
@@ -38,7 +37,6 @@ export interface ProxyEvent {
   timestamp?: UnixTime;
 }
 
-/** A VPN or anonymizer IP range from the anonymizers feed. */
 export interface AnonymizerEvent {
   /** The first address of the range. */
   range_start?: string;
@@ -71,15 +69,12 @@ export interface TorrentEvent {
   timestamp?: UnixTime;
 }
 
-/** A file in a torrent. */
 export interface TorrentFile {
-  /** The file path within the torrent. */
   path?: string;
   /** The file size in bytes. */
   length?: number;
 }
 
-/** A peer seen sharing a torrent. */
 export interface TorrentPeer {
   ip?: string;
   port?: number;
@@ -89,9 +84,7 @@ export interface TorrentPeer {
   encrypted?: boolean;
 }
 
-/** A JA4T TCP fingerprint sighting. */
 export interface JA4TEvent {
-  /** The address the fingerprint was seen from. */
   ip?: string;
   ja4t?: string;
   /** The service tag of the address. */
@@ -129,15 +122,12 @@ export interface HeliosHTTPEvent {
   /** The destination port. */
   port: number;
   protocol: "http";
-  /** The capturing sensor. */
   meta: HeliosMeta;
-  /** The parsed request. */
   details?: HTTPRequestDetails;
   /** The raw request bytes, base64-encoded. */
   raw?: string;
 }
 
-/** A parsed HTTP request. */
 export interface HTTPRequestDetails {
   method?: string;
   /** The request target. */
@@ -161,7 +151,6 @@ export interface HeliosHTTPSEvent {
   /** The destination port. */
   port: number;
   protocol: "https";
-  /** The capturing sensor. */
   meta: HeliosMeta;
   /** The parsed ClientHello, or null when the sensor could not parse the handshake. */
   details?: TLSClientHello | null;
@@ -225,7 +214,6 @@ export interface TLSCodeName {
   name?: string;
 }
 
-/** A TLS extension in a ClientHello. */
 export interface TLSExtension {
   code?: number;
   name?: string;
@@ -244,7 +232,6 @@ export interface HeliosDNSEvent {
   /** The destination port. */
   port: number;
   protocol: "dns";
-  /** The capturing sensor. */
   meta: HeliosMeta;
 }
 

@@ -25,10 +25,8 @@ import {
 import type { Account, DomainInfo, IPInfo } from "./types.ts";
 import { VERSION } from "./version.ts";
 
-/** The base URL of the Synthient HTTP API. */
 export const DEFAULT_BASE_URL = "https://api.synthient.com/api/v4";
 
-/** Configures a {@link Synthient} client. */
 export interface ClientOptions {
   /** The API key. Defaults to the SYNTHIENT_API_KEY environment variable. */
   apiKey?: string | undefined;
@@ -59,7 +57,6 @@ export interface ClientOptions {
   onResponse?: ((metadata: ResponseMetadata) => void) | undefined;
 }
 
-/** Options for {@link Synthient.lookupDomain}. */
 export interface LookupDomainOptions extends RequestOptions {
   /** Caps the number of recent events returned. The API default is 50, and it clamps values above 1000. */
   limit?: number | undefined;

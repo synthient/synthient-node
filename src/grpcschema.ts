@@ -16,7 +16,6 @@ import { Client, Metadata, credentials, status, type ServiceError } from "@grpc/
 import { SynthientError } from "./errors.ts";
 import { checkTimeout, resolveAPIKey } from "./options.ts";
 
-/** The address of the Synthient gRPC API. */
 export const DEFAULT_ENDPOINT = "grpc.synthient.com:443";
 
 const MAX_MESSAGE_SIZE = 32 << 20;
@@ -37,7 +36,6 @@ const EXPLANATIONS: Partial<Record<number, string>> = {
     "Timed out reading protobuf schemas from gRPC reflection. Use a longer timeout.",
 };
 
-/** Configures {@link fetchSchema}. */
 export interface FetchSchemaOptions {
   /** Sent as x-api-key metadata when not empty. Defaults to the SYNTHIENT_API_KEY environment variable. */
   apiKey?: string | undefined;
@@ -59,7 +57,6 @@ export interface FetchSchemaOptions {
   timeout?: number | undefined;
 }
 
-/** The protobuf schema returned by {@link fetchSchema}. */
 export interface Schema {
   /** The normalized address that was queried. */
   endpoint: string;
@@ -236,8 +233,8 @@ export async function fetchSchema(options: FetchSchemaOptions = {}): Promise<Sch
 }
 
 /**
- * Converts `raw`, in any form {@link FetchSchemaOptions.endpoint} accepts, to host:port
- * and returns it with the host name used for TLS.
+ * Converts `raw`, in any form {@link FetchSchemaOptions.endpoint} accepts, to host:port.
+ * `host` is the bare host name, without brackets or a port.
  */
 export function normalizeEndpoint(raw: string): { endpoint: string; host: string } {
   let value = raw.trim() || DEFAULT_ENDPOINT;
@@ -313,7 +310,7 @@ function decodeReply(bytes: Uint8Array): Reply {
   return reply;
 }
 
-// Reads a protobuf message field by field. Fields the visitor leaves unread are skipped.
+// Fields the visitor leaves unread are skipped.
 function decode(bytes: Uint8Array, visit: (field: number, reader: BinaryReader) => void): void {
   const reader = new BinaryReader(bytes);
   while (reader.pos < reader.len) {

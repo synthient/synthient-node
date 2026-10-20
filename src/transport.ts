@@ -33,12 +33,9 @@ const TRANSIENT_CODES = new Set([
 
 const RETRY_STATUSES = new Set([500, 502, 503, 504]);
 
-/** The subset of `fetch` the client uses. */
 export type Fetch = (input: string, init: RequestInit) => Promise<Response>;
 
-/** Describes one HTTP response from the Synthient API. */
 export interface ResponseMetadata {
-  /** The HTTP status code. */
   status: number;
   /** The X-Request-Id header, or "". */
   requestID: string;
@@ -50,7 +47,6 @@ export interface ResponseMetadata {
   headers: Headers;
 }
 
-/** Options for a single call. */
 export interface RequestOptions {
   /**
    * Cancels the call, which rejects with the signal's reason. Use `AbortSignal.timeout(ms)`
@@ -88,8 +84,8 @@ export interface Request {
 }
 
 /**
- * One attempt at a request. Its signal follows the caller's signal and an idle timer
- * that runs only while the attempt waits on the network.
+ * Its signal follows the caller's signal and an idle timer that runs only while the
+ * attempt waits on the network.
  */
 export class Attempt {
   readonly caller: AbortSignal | undefined;
@@ -110,9 +106,8 @@ export class Attempt {
   }
 
   /**
-   * Waits at most the timeout for work that reads from the network. A caller abort
-   * rejects with the caller's reason, the timeout with APITimeoutError, and any other
-   * failure with APIConnectionError.
+   * Storage failures are rebuilt without their message or cause, either of which can
+   * contain the presigned URL.
    */
   async watch<T>(work: Promise<T>): Promise<T> {
     const timer = setTimeout(() => {
@@ -156,16 +151,12 @@ export class Transport {
     this.#headers = new Headers({ "x-api-key": config.apiKey, "user-agent": config.userAgent });
   }
 
-  /** Returns the absolute URL of an API request. */
   url(request: Request): string {
     const search = new URLSearchParams(request.query).toString();
     return search ? `${this.#base}${request.path}?${search}` : this.#base + request.path;
   }
 
-  /**
-   * Sends an API request, retrying as its policy allows, and returns the final
-   * response with its body unread.
-   */
+  /** The caller must read or cancel the returned response's body. */
   send(request: Request, signal?: AbortSignal): Promise<[Response, Attempt]> {
     return this.#request<[Response, Attempt]>(request, signal, (response, attempt) => [
       response,
@@ -223,7 +214,6 @@ export class Transport {
     }
   }
 
-  /** Sends an API request and returns its JSON object body. */
   json<T extends object>(request: Request, signal?: AbortSignal): Promise<T> {
     return this.#request(request, signal, async (response, attempt) => {
       if (!response.ok) {
@@ -247,10 +237,6 @@ export class Transport {
     });
   }
 
-  /**
-   * Sends an API request that must answer 200 and returns its body, with each read
-   * bounded by the client's timeout.
-   */
   async stream(request: Request, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     const [response, attempt] = await this.send(request, signal);
     if (response.status !== 200) {
@@ -259,10 +245,6 @@ export class Transport {
     return watchedBody(response, attempt);
   }
 
-  /**
-   * Reads a failed response's bounded body into an APIError. If reading fails, the
-   * error keeps the status and has the read failure as its cause.
-   */
   async error(response: Response, attempt: Attempt): Promise<APIError> {
     try {
       const [body] = await read(response, attempt, MAX_ERROR_SIZE);
@@ -276,9 +258,8 @@ export class Transport {
   }
 
   /**
-   * Fetches a presigned storage URL without the API key, following at most 10
-   * redirects that stay on http(s) and never downgrade from https. Errors never
-   * include the URL, and storage error bodies are discarded.
+   * The API key is never sent to the storage host. Errors never include the presigned
+   * URL, and storage error bodies are discarded.
    */
   async download(start: URL, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     let url = start;
@@ -336,10 +317,6 @@ export function isHTTP(url: URL | null): url is URL {
   return url?.protocol === "https:" || url?.protocol === "http:";
 }
 
-/**
- * Resolves a redirect's location against `from`, allowing only an http(s) URL without
- * credentials that does not downgrade from https.
- */
 export function redirectTarget(from: URL, response: Response): URL {
   const location = response.headers.get("location");
   const target = location === null ? null : URL.parse(location, from.href);
@@ -352,16 +329,15 @@ export function redirectTarget(from: URL, response: Response): URL {
   return target;
 }
 
-/** Waits for a backoff delay, rejecting with the signal's reason if it aborts. */
 export async function wait(ms: number, signal: AbortSignal | undefined): Promise<void> {
   try {
     await sleep(ms, undefined, { signal });
   } catch (error) {
+    // timers/promises rejects with an AbortError, not the signal's reason.
     throw signal?.aborted ? signal.reason : error;
   }
 }
 
-/** Returns the jittered delay in milliseconds before retry `attempt`, counted from zero. */
 export function backoff(attempt: number): number {
   return Math.min(1000 * 2 ** Math.min(attempt, 5), MAX_BACKOFF) * (0.75 + Math.random() / 2);
 }
@@ -386,10 +362,6 @@ function transient(error: unknown, signal: AbortSignal | undefined): boolean {
   return false;
 }
 
-/**
- * Wraps a response body so each read is bounded by the attempt's timeout. Canceling the
- * returned stream cancels the body.
- */
 function watchedBody(response: Response, attempt: Attempt): ReadableStream<Uint8Array> {
   if (!response.body) {
     return new ReadableStream({
@@ -417,10 +389,7 @@ function watchedBody(response: Response, attempt: Attempt): ReadableStream<Uint8
   );
 }
 
-/**
- * Reads at most `limit` bytes of a body. It returns the bytes and whether the body
- * ended within the limit; a longer body is canceled after the limit.
- */
+/** Returns false with the first `limit` bytes when the body is longer than `limit`. */
 async function read(
   response: Response,
   attempt: Attempt,
@@ -450,7 +419,7 @@ async function read(
   }
 }
 
-/** Discards a body so its connection can be reused. Failures other than caller cancellation are ignored. */
+/** Discards a body so its connection can be reused. */
 export async function drain(response: Response, attempt: Attempt): Promise<void> {
   await read(response, attempt, MAX_ERROR_SIZE).catch(() => undefined);
   attempt.caller?.throwIfAborted();

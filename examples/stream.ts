@@ -26,7 +26,7 @@ while (!controller.signal.aborted) {
       throw error;
     }
     console.error("stream:", error);
-    // Avoid reconnecting in a tight loop.
+    // Stream connections are limited to 30 per minute per team.
     await sleep(2000);
   }
 }

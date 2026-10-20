@@ -5,7 +5,7 @@
  */
 export type UnixTime = number;
 
-/** A network type. New values may be added. */
+/** New values may be added. */
 export type NetworkType =
   | "MOBILE"
   | "SATELLITE"
@@ -17,11 +17,11 @@ export type NetworkType =
   | "GOVERNMENT"
   | (string & {});
 
-/** An operating system seen behind an address. New values may be added. */
+/** New values may be added. */
 export type DeviceOS =
   "Android" | "Chrome OS" | "FreeBSD" | "iOS" | "Linux" | "Mac OS X" | "Windows" | (string & {});
 
-/** A permission granted to an API key. New values may be added. */
+/** New values may be added. */
 export type Scope =
   | "BASIC"
   | "PROXY_FEEDS"
@@ -47,7 +47,7 @@ export type Scope =
   | "ADMIN_PROXIES"
   | (string & {});
 
-/** The activity pattern of a domain, always one of these sentences. */
+/** The API always sends one of these sentences. */
 export type ActivityCadence =
   | "No activity in the last 30 days."
   | "Activity is evenly distributed across the day."
@@ -55,7 +55,7 @@ export type ActivityCadence =
   | "Activity follows a weekend pattern."
   | "Activity is burst-driven with significant peaks.";
 
-/** A parquet column type. New values may be added. */
+/** New values may be added. */
 export type ParquetType =
   "string" | "int64" | "uint32" | "uint64" | "bool" | "bytes" | (string & {});
 
@@ -64,17 +64,11 @@ export function toDate(timestamp: UnixTime): Date {
   return new Date(timestamp >= 1e12 ? timestamp : timestamp * 1000);
 }
 
-/**
- * The intelligence Synthient holds for an IP address. `network`, `location`, and
- * `intelligence` are absent when the API has no data for them.
- */
+/** `network`, `location`, and `intelligence` are absent when the API has no data for them. */
 export interface IPInfo {
-  /** The address that was looked up. */
   ip: string;
-  /** The network that announces the address. */
   network?: Network;
   location?: Location;
-  /** The risk score and the proxy, VPN, and device observations for the address. */
   intelligence?: Intelligence;
 }
 
@@ -91,7 +85,6 @@ export interface Network {
   abuse_phone?: string;
 }
 
-/** The geolocation of an address. */
 export interface Location {
   /** The ISO 3166-1 alpha-2 country code. */
   country: string;
@@ -107,20 +100,18 @@ export interface Location {
   geo_hash: string;
 }
 
-/** Synthient's assessment of an address. */
 export interface Intelligence {
   /** The risk of the address, from 0 to 100. */
   risk_score: number;
   /** The kinds of services seen on the address, such as "RESIDENTIAL_PROXY". New values may be added. */
   categories: string[];
-  /** Behaviors observed from the address. New values may be added. */
+  /** New values may be added. */
   behavior: string[];
   /**
    * The proxy, VPN, and anonymizer services seen using the address. An empty list does
    * not mean the address is clean.
    */
   providers: Provider[];
-  /** The device types seen behind the address. */
   devices: Device[];
 }
 
@@ -130,11 +121,9 @@ export interface Provider {
   provider: string;
   /** The service category. */
   type: string;
-  /** When the service was last seen using the address. */
   last_seen: UnixTime;
 }
 
-/** A device type seen behind an address. */
 export interface Device {
   os: DeviceOS;
   /** The operating system version. */
@@ -144,24 +133,19 @@ export interface Device {
 
 /** The honeypot traffic Synthient has observed for a domain. */
 export interface DomainInfo {
-  /** The domain that was looked up. */
   domain: string;
   /**
    * "active" when the domain had events in the last 24 hours. A domain that was never
    * observed is "inactive" with zeroed stats.
    */
   status: "active" | "inactive";
-  /** Aggregate event counts. */
   stats: DomainStats;
-  /** The distinct source addresses. */
   unique_ips: UniqueIPs;
   /** Daily event counts. */
   time_series: TimeSeriesPoint[];
   /** The network that sent the most events, absent when there are none. */
   top_asn?: ASNCount;
-  /** The most targeted subdomains. */
   top_subdomains: SubdomainCount[];
-  /** The most targeted ports. */
   top_ports: PortCount[];
   /** Event counts by source country. */
   geo_distribution: CountryCount[];
@@ -170,23 +154,19 @@ export interface DomainInfo {
    * all in UTC.
    */
   hour_dow_heatmap: number[][];
-  /** The hourly activity pattern. */
   activity_stats: ActivityStats;
   /** The most recent events, capped by the `limit` passed to `lookupDomain`. */
   recent_events: DomainEvent[];
 }
 
-/** Aggregate event counts for a domain. */
 export interface DomainStats {
   events_24h: number;
   total_events_30d: number;
 }
 
-/** The distinct source addresses seen for a domain. */
+/** Counts of the distinct source addresses seen for a domain. */
 export interface UniqueIPs {
-  /** The count for the last 24 hours. */
   value_24h: number;
-  /** The count for the last 30 days. */
   value_30d: number;
   /** Hourly counts for the last 24 hours. */
   sparkline_24h: number[];
@@ -194,36 +174,28 @@ export interface UniqueIPs {
 
 /** The event counts for one day. */
 export interface TimeSeriesPoint {
-  /** The start of the day. */
+  /** The start of the UTC day. */
   date: UnixTime;
   events: number;
-  /** The number of distinct source addresses that day. */
   unique_ips: number;
 }
 
-/** An autonomous system and its event count. */
 export interface ASNCount {
   asn: number;
   events: number;
 }
 
-/** A subdomain and its event count. */
 export interface SubdomainCount {
-  /** The targeted subdomain. */
   subdomain: string;
-  /** The number of events that targeted it. */
   count: number;
 }
 
-/** A port and its event count. */
 export interface PortCount {
   /** The targeted port. */
   port: number;
-  /** The number of events that targeted it. */
   count: number;
 }
 
-/** A source country and its counts. */
 export interface CountryCount {
   /** The ISO 3166-1 alpha-2 country code. */
   country_code: string;
@@ -231,21 +203,16 @@ export interface CountryCount {
   unique_ips: number;
 }
 
-/** The hourly activity pattern of a domain. */
 export interface ActivityStats {
-  /** How events are distributed over time. */
   cadence: ActivityCadence;
-  /** The median number of events per hour. */
   median_per_hour: number;
-  /** The 95th percentile of events per hour. */
   p95_per_hour: number;
-  /** The busiest UTC hour of the day. */
+  /** The busiest UTC hour, from 0 to 23, over the last 30 days. */
   peak_hour: number;
-  /** The quietest UTC hour of the day. */
+  /** The quietest UTC hour, from 0 to 23, over the last 30 days. */
   quiet_hour: number;
 }
 
-/** A single honeypot event for a domain. */
 export interface DomainEvent {
   timestamp: UnixTime;
   /** The full proxy exit address that carried the event. Despite the name, it is not masked. */
@@ -257,7 +224,6 @@ export interface DomainEvent {
   port: number;
 }
 
-/** The account that owns an API key. */
 export interface Account {
   email: string;
   first_name: string;
@@ -265,13 +231,11 @@ export interface Account {
   organization: Organization;
   /** The permissions granted to the key. */
   scopes: Scope[];
-  /** The remaining lookup credits. */
   lookup_quota: LookupQuota;
   /** The API key used for the request. */
   api_key?: AccountAPIKey;
 }
 
-/** The organization an account belongs to. */
 export interface Organization {
   id: string;
   name: string;
@@ -279,15 +243,12 @@ export interface Organization {
   relation: "OWNER" | "ADMIN" | "MEMBER";
 }
 
-/** The lookup credits available to an account. */
 export interface LookupQuota {
-  /** The number of lookup credits remaining. */
   credits: number;
   /** Seconds until the credits reset. */
   resets_in: number;
 }
 
-/** The API key a request was made with. */
 export interface AccountAPIKey {
   /** The key ID. It is not the secret key. */
   id: string;
@@ -302,7 +263,7 @@ export interface ExportPage {
   stream: string;
   /** The exports on this page. */
   feeds: Export[];
-  /** Fetches the next page. It is absent, null, or "" on the last page. */
+  /** Pass it as `cursor` to fetch the next page. It is absent, null, or "" on the last page. */
   next_cursor?: string | null;
 }
 
@@ -320,7 +281,6 @@ export interface Export {
   date: string;
   /** The UTC hour of an hourly export, absent or null for a daily export. */
   hour?: number | null;
-  /** The size of the parquet file in bytes. */
   size_bytes: number;
   row_count: number;
   /** The hex-encoded SHA-256 of the parquet file. */
@@ -330,10 +290,8 @@ export interface Export {
   download_path: string;
 }
 
-/** A parquet export's metadata, without its contents. */
 export interface ExportMeta {
   id: string;
-  /** The feed's stream identifier. */
   stream: string;
   /** Whether the export covers a UTC day or a UTC hour. */
   kind: "hourly" | "daily";
@@ -348,17 +306,14 @@ export interface ExportMeta {
   /** The hex-encoded SHA-256 of the parquet file. */
   checksum: string;
   created_at: UnixTime;
-  /** The parquet columns. */
   schema: ParquetSchema;
 }
 
-/** The columns of a parquet export. */
 export interface ParquetSchema {
   /** The columns in file order. */
   fields: ParquetColumn[];
 }
 
-/** A column of a parquet export. */
 export interface ParquetColumn {
   name: string;
   type: ParquetType;
