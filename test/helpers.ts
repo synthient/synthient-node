@@ -46,6 +46,7 @@ export const EXPORT = {
   checksum: "ab12",
   created_at: 1778187600,
   download_path: "/api/v4/feeds/proxies/export/2026-05-07/21",
+  formats: [{ format: "parquet", size_bytes: 1048576, checksum: "ab12" }],
 };
 
 export interface Recorded {

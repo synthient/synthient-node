@@ -97,6 +97,7 @@ test("downloadURL rejects invalid redirects", async () => {
     [redirect("ftp://storage.test/x"), "export redirect has no valid location"],
     [redirect("https://user:pass@storage.test/x"), "export redirect has no valid location"],
     [new Response("{}", { status: 200 }), "expected a redirect to the export, got status 200"],
+    [new Response(null, { status: 304 }), "expected a redirect to the export, got status 304"],
   ] as const;
   for (const [response, message] of cases) {
     const { fetch } = stub(() => response);

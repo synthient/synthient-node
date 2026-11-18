@@ -47,6 +47,7 @@ test("billed requests retry only rate limits", async () => {
 
     await assert.rejects(client.lookupIP("8.8.8.8"), { status });
     await assert.rejects(client.lookupIPs(["8.8.8.8"]), { status });
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- covered until it is removed
     await assert.rejects(client.lookupDomain("example.com"), { status });
     assert.equal(requests.length, attempts * 3, `status ${status}`);
   }
@@ -175,6 +176,7 @@ test("billed lookups do not retry interrupted response bodies", async (t) => {
   for (const lookup of [
     () => client.lookupIP("8.8.8.8"),
     () => client.lookupIPs(["8.8.8.8"]),
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- covered until it is removed
     () => client.lookupDomain("example.com"),
   ]) {
     await assert.rejects(lookup(), APIConnectionError);

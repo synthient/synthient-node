@@ -37,7 +37,7 @@ const EXPLANATIONS: Partial<Record<number, string>> = {
 };
 
 export interface FetchSchemaOptions {
-  /** Sent as x-api-key metadata when not empty. Defaults to the SYNTHIENT_API_KEY environment variable. */
+  /** Sent as x-api-key metadata, which server reflection requires. Defaults to the SYNTHIENT_API_KEY environment variable. */
   apiKey?: string | undefined;
   /**
    * The server as host:port, a bare host (port 443 is assumed), or a grpc:// or

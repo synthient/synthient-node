@@ -1,6 +1,6 @@
 /**
- * The official Node.js client for the Synthient API: IP and domain intelligence,
- * account details, and real-time and bulk data feeds.
+ * The official Node.js client for the Synthient API: IP intelligence, account details,
+ * and real-time and bulk data feeds.
  *
  * @example
  * ```ts
@@ -17,6 +17,7 @@ export {
   DEFAULT_BASE_URL,
   Synthient,
   type ClientOptions,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept until the next major version
   type LookupDomainOptions,
 } from "./client.ts";
 export {
@@ -27,7 +28,17 @@ export {
   type APIErrorInit,
 } from "./errors.ts";
 export type * from "./events.ts";
-export { Feed, dailyExport, hourlyExport, type ListExportsOptions } from "./feed.ts";
+export {
+  Dataset,
+  Feed,
+  dailyExport,
+  hourlyExport,
+  type DatasetExportOptions,
+  type ExportOptions,
+  type ExportVolumeOptions,
+  type ListDatasetExportsOptions,
+  type ListExportsOptions,
+} from "./feed.ts";
 export type { Fetch, RequestOptions, ResponseMetadata } from "./transport.ts";
 export { toDate } from "./types.ts";
 export type * from "./types.ts";

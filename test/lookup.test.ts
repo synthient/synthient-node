@@ -106,6 +106,29 @@ test("lookupIPs rejects a response without results", async () => {
   await assert.rejects(newClient({ fetch }).lookupIPs(["8.8.8.8"]), SynthientError);
 });
 
+test("lookupIP and lookupIPs read a null network and location as absent", async () => {
+  const body = {
+    ip: "192.0.2.1",
+    network: null,
+    location: null,
+    intelligence: IP_INFO.intelligence,
+  };
+  const { fetch } = stub((request) => {
+    return request.method === "POST" ? json(200, { results: [body, IP_INFO] }) : json(200, body);
+  });
+  const client = newClient({ fetch });
+
+  const single = await client.lookupIP("192.0.2.1");
+  const [batched, full] = await client.lookupIPs(["192.0.2.1", "8.8.8.8"]);
+
+  for (const info of [single, batched]) {
+    assert.deepEqual(info, { ip: "192.0.2.1", intelligence: IP_INFO.intelligence });
+  }
+  assert.deepEqual(full, IP_INFO);
+});
+
+/* eslint-disable @typescript-eslint/no-deprecated -- lookupDomain stays covered until it is removed */
+
 test("lookupDomain escapes the domain and sends the limit", async () => {
   const { fetch, requests } = stub(() => json(200, DOMAIN_INFO));
   const client = newClient({ fetch });

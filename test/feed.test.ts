@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SynthientError, dailyExport, hourlyExport } from "../src/index.ts";
-import { BASE_URL, EXPORT, collect, json, newClient, problem, stub } from "./helpers.ts";
+import { BASE_URL, EXPORT, collect, json, newClient, problem, redirect, stub } from "./helpers.ts";
 
 const META = {
   id: "2026-05-07",
@@ -15,6 +15,7 @@ const META = {
   checksum: "ab12",
   created_at: 1778187600,
   schema: { fields: [{ name: "ip", type: "string" }] },
+  formats: [{ format: "parquet", size_bytes: 1048576, checksum: "ab12" }],
 };
 
 function page(ids: string[], nextCursor?: string | null) {
@@ -63,6 +64,7 @@ test("invalid export IDs send nothing", async () => {
     "2026-05-07T21",
     "../2026-05-07",
     "latest/1",
+    "daily",
   ];
 
   for (const id of invalid) {
@@ -89,10 +91,10 @@ test("each feed uses its route", async () => {
     [client.anonymizers, "anonymizers"],
     [client.torrents, "torrents"],
     [client.ja4t, "ja4t"],
-    [client.heliosHTTP, "helio/http"],
-    [client.heliosHTTPS, "helio/https"],
-    [client.heliosDNS, "helio/dns"],
-    [client.heliosADB, "helio/adb"],
+    [client.heliosHTTP, "helios/http"],
+    [client.heliosHTTPS, "helios/https"],
+    [client.heliosDNS, "helios/dns"],
+    [client.heliosADB, "helios/adb"],
   ] as const;
 
   for (const [feed] of feeds) {
@@ -188,4 +190,106 @@ test("allExports reports repeated cursors and later page errors", async () => {
     { status: 500 },
   );
   assert.deepEqual(seen, ["a"]);
+});
+
+test("listExports and allExports send day and variant only when set", async () => {
+  const { fetch, requests } = stub((request) => {
+    const next = new URL(request.url).searchParams.has("cursor") ? null : "c1";
+    return json(200, page(["2026-11-17"], next));
+  });
+  const feed = newClient({ fetch }).proxies;
+
+  await feed.listExports({ day: "2026-11-17", variant: "lite" });
+  await feed.listExports({ day: undefined, variant: undefined });
+  await collect(feed.allExports({ limit: 1, day: "2026-11-17", variant: "lite" }));
+
+  assert.deepEqual(
+    requests.map((request) => new URL(request.url).search),
+    [
+      "?day=2026-11-17&variant=lite",
+      "",
+      "?limit=1&day=2026-11-17&variant=lite",
+      "?limit=1&cursor=c1&day=2026-11-17&variant=lite",
+    ],
+  );
+});
+
+test("a lite listing passes its items through", async () => {
+  const lite = {
+    ...EXPORT,
+    variant: "lite",
+    download_path: "/api/v4/feeds/proxies/export/2026-05-07/21?variant=lite",
+  };
+  const { fetch } = stub(() => json(200, { stream: "proxies", feeds: [lite] }));
+
+  const result = await newClient({ fetch }).proxies.listExports({ variant: "lite" });
+
+  assert.deepEqual(result.feeds, [lite]);
+});
+
+test("variant is sent for daily and hourly exports", async () => {
+  const { fetch, requests } = stub((request) => {
+    if (!request.url.startsWith(BASE_URL)) {
+      return new Response("PAR1");
+    }
+    return request.url.includes("/meta")
+      ? json(200, { ...META, variant: "lite" })
+      : redirect("https://storage.test/x.parquet");
+  });
+  const feed = newClient({ fetch }).proxies;
+
+  for (const id of ["2026-05-07", "2026-05-07/21"]) {
+    assert.equal((await feed.exportMeta(id, { variant: "lite" })).variant, "lite");
+    await feed.downloadURL(id, { variant: "lite" });
+    await new Response(await feed.download(id, { variant: "lite" })).text();
+  }
+  await feed.exportMeta("latest", { variant: undefined });
+
+  assert.deepEqual(
+    requests
+      .filter((request) => request.url.startsWith(BASE_URL))
+      .map((request) => request.url.slice(`${BASE_URL}/feeds/proxies/export/`.length)),
+    [
+      "2026-05-07/meta?variant=lite",
+      "2026-05-07?variant=lite",
+      "2026-05-07?variant=lite",
+      "2026-05-07/21/meta?variant=lite",
+      "2026-05-07/21?variant=lite",
+      "2026-05-07/21?variant=lite",
+      "latest/meta",
+    ],
+  );
+});
+
+test("a lite export that isn't published yet rejects with an APIError", async () => {
+  const { fetch } = stub(() =>
+    problem(404, { detail: "No snapshot found for the requested date" }),
+  );
+  const feed = newClient({ fetch }).proxies;
+
+  await assert.rejects(feed.exportMeta("latest", { variant: "lite" }), { status: 404 });
+  await assert.rejects(feed.download("latest", { variant: "lite" }), { status: 404 });
+});
+
+test("exportVolume sends days only when set and keeps large counts", async () => {
+  const volume = {
+    stream: "helios_dns",
+    days: [
+      { date: "2026-11-17", kind: "daily", snapshots: 1, row_count: 5e9, size_bytes: 20640294576 },
+      { date: "2026-11-18", kind: "hourly", snapshots: 3, row_count: 64417250, size_bytes: 88e7 },
+    ],
+  };
+  const { fetch, requests } = stub(() => json(200, volume));
+  const feed = newClient({ fetch }).heliosDNS;
+
+  assert.deepEqual(await feed.exportVolume(), volume);
+  await feed.exportVolume({ days: 7 });
+
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      `${BASE_URL}/feeds/helios/dns/export/daily`,
+      `${BASE_URL}/feeds/helios/dns/export/daily?days=7`,
+    ],
+  );
 });

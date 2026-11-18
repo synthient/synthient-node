@@ -13,7 +13,7 @@
 
 # synthient-node
 
-`@synthient/synthient` is the official Node.js SDK for the [Synthient API](https://docs.synthient.com): IP and domain intelligence, account details, and real-time and bulk data feeds. It is written in TypeScript and ships with type definitions.
+`@synthient/synthient` is the official Node.js SDK for the [Synthient API](https://docs.synthient.com): IP intelligence, account details, and real-time and bulk data feeds. It is written in TypeScript and ships with type definitions.
 
 [![npm](https://img.shields.io/npm/v/@synthient/synthient)](https://www.npmjs.com/package/@synthient/synthient)
 [![test](https://github.com/synthient/synthient-node/actions/workflows/test.yml/badge.svg)](https://github.com/synthient/synthient-node/actions/workflows/test.yml)
@@ -83,7 +83,7 @@ Node.js 22.12 or later. Other runtimes, such as Bun and Deno, are not tested. Th
 
 ## API Keys
 
-Every request needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one, [contact us](mailto:contact@synthient.com). A key's scopes decide what it can call: `BASIC` covers the lookups and `account`, and each feed has its own scopes, listed under [Feeds](#feeds).
+Every request needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one, [contact us](mailto:contact@synthient.com). A key's scopes decide what it can call: `BASIC` covers the lookups and `account`, and each feed and dataset has its own scopes, listed under [Feeds](#feeds) and [Datasets](#datasets).
 
 If a request fails even though you are sending a key:
 
@@ -138,7 +138,7 @@ if (info.intelligence) {
 
 ### Look up many IP addresses
 
-Look up as many as 1000 addresses in one request for `ceil(n * 0.9)` credits. Private and reserved addresses are skipped and duplicates are merged, so match results by `ip`.
+Look up a batch of addresses in one request for `ceil(n * 0.9)` credits. The batch cap depends on your plan: 100 on Free, 500 on Starter, and 1000 on Premium and Enterprise, and the API rejects a larger batch with a 422. Private and reserved addresses are skipped and duplicates are merged, so match results by `ip`.
 
 ```ts
 const results = await client.lookupIPs(["8.8.8.8", "1.1.1.1"]);
@@ -146,20 +146,6 @@ for (const result of results) {
   if (result.intelligence) {
     console.log(result.ip, result.intelligence.risk_score);
   }
-}
-```
-
-### Look up a domain
-
-Get the honeypot traffic observed for a domain and its most recent events. Each lookup costs one credit.
-
-```ts
-import { toDate } from "@synthient/synthient";
-
-const domain = await client.lookupDomain("example.com", { limit: 10 });
-console.log(domain.status, domain.stats.events_24h);
-for (const event of domain.recent_events) {
-  console.log(toDate(event.timestamp), event.target_subdomain, event.port);
 }
 ```
 
@@ -180,8 +166,7 @@ console.log(account.organization.name, account.scopes, account.lookup_quota.cred
 ### Synthient
 
 - `lookupIP` - Look up an IPv4 or IPv6 address
-- `lookupIPs` - Look up as many as 1000 addresses in one request
-- `lookupDomain` - Look up the honeypot traffic observed for a domain
+- `lookupIPs` - Look up a batch of addresses in one request
 - `account` - Get the key's account, scopes, and remaining lookup credits
 - `health` - Check that the API and its dependencies are healthy
 
@@ -192,6 +177,7 @@ Each feed is a property of the client, such as `client.proxies`, and has the sam
 - `stream` - Iterate over the feed's real-time events
 - `listExports` - List one page of the feed's Parquet exports, newest first
 - `allExports` - Iterate over every export, fetching pages as needed
+- `exportVolume` - Get the rows and bytes the feed exported per UTC day
 - `exportMeta` - Get an export's checksum, size, row count, and Parquet schema
 - `download` - Download an export's Parquet file
 - `downloadURL` - Get a presigned URL for an export's Parquet file, valid for 24 hours
@@ -201,11 +187,26 @@ Each feed is a property of the client, such as `client.proxies`, and has the sam
 | `proxies`     | Residential, mobile, and datacenter proxies   | `ProxyEvent`       | `PROXY_FIREHOSE`        | `PROXY_FEEDS`         |
 | `anonymizers` | VPN and anonymizer IP ranges                  | `AnonymizerEvent`  | `ANONYMIZERS_STREAM`    | `ANONYMIZERS_FEED`    |
 | `torrents`    | BitTorrent DHT and tracker peers              | `TorrentEvent`     | `TORRENTS_STREAM`       | `TORRENTS_FEED`       |
-| `ja4t`        | JA4T TCP fingerprints                         | `JA4TEvent`        | `JA4T_STREAM`           | `JA4T_FEED`           |
 | `heliosHTTP`  | Helios honeypot HTTP requests                 | `HeliosHTTPEvent`  | `HONEYPOT_HTTP_STREAM`  | `HONEYPOT_HTTP_FEED`  |
 | `heliosHTTPS` | Helios honeypot TLS ClientHellos              | `HeliosHTTPSEvent` | `HONEYPOT_HTTPS_STREAM` | `HONEYPOT_HTTPS_FEED` |
 | `heliosDNS`   | Helios honeypot tunnel destinations           | `HeliosDNSEvent`   | `HONEYPOT_DNS_STREAM`   | `HONEYPOT_DNS_FEED`   |
 | `heliosADB`   | Helios honeypot Android Debug Bridge commands | `HeliosADBEvent`   | `HONEYPOT_ADB_STREAM`   | `HONEYPOT_ADB_FEED`   |
+
+### Datasets
+
+Datasets have one export per UTC day and no stream. Each dataset is a property of the client, such as `client.geolocation`, and has the same methods:
+
+- `listExports` - List one page of the dataset's daily exports, newest first
+- `allExports` - Iterate over every export, fetching pages as needed
+- `exportVolume` - Get the rows and bytes the dataset exported per UTC day
+- `exportMeta` - Get a file's checksum, size, and row count, and list every file of the day
+- `download` - Download a day's file in the format you choose
+- `downloadURL` - Get a presigned URL for a day's file, valid for 24 hours
+
+| Property      | Data                                    | Scope              | Formats                                   |
+| ------------- | --------------------------------------- | ------------------ | ----------------------------------------- |
+| `geolocation` | IP geolocation, network, and risk data  | `GEOLOCATION_FEED` | `parquet` (default), `csv` (gzip), `mmdb` |
+| `whois`       | WHOIS registry records as Parquet files | `WHOIS_FEED`       | `tar.gz`                                  |
 
 </details>
 
@@ -233,7 +234,7 @@ for (;;) {
 }
 ```
 
-- The server closes each stream after up to 30 minutes. That ends the inner loop without an error, and the outer loop reconnects at once.
+- The server can close a stream at any time, such as during a deploy. That ends the inner loop without an error, and the outer loop reconnects at once.
 - A 401 or 403 stops the loop, because reconnecting can't fix a rejected key or a missing scope.
 - Any other failure is thrown from the inner loop, and the outer loop waits 2 seconds before reconnecting.
 - Events sent while disconnected are missed. The API has no resume cursor.
@@ -257,11 +258,19 @@ for await (const item of client.proxies.allExports()) {
 }
 ```
 
+Pass `day` to list only one UTC day's exports:
+
+```ts
+import { dailyExport } from "@synthient/synthient";
+
+const today = await client.proxies.listExports({ day: dailyExport(new Date()) });
+```
+
 On the first page, the newest hourly export has the ID `latest`, a moving alias for the freshest export. Its `date` and `hour` give its stable ID, such as `2026-10-14/21`.
 
 ## Downloads
 
-Exports are Parquet files. `download` returns a file's contents as a web `ReadableStream`, which you must read to the end or cancel:
+Feed exports are Parquet files. `download` returns a file's contents as a web `ReadableStream`, which you must read to the end or cancel:
 
 ```ts
 import { createWriteStream } from "node:fs";
@@ -272,10 +281,19 @@ const body = await client.proxies.download("latest");
 await pipeline(Readable.fromWeb(body), createWriteStream("proxies.parquet"));
 ```
 
-- Name an export by its `id` from a listing, by `"latest"`, or by `dailyExport(date)` or `hourlyExport(date)` for a UTC day or hour.
+Datasets offer more formats. This downloads the newest geolocation database as a MaxMind DB:
+
+```ts
+const mmdb = await client.geolocation.download("latest", { format: "mmdb" });
+await pipeline(Readable.fromWeb(mmdb), createWriteStream("geolocation.mmdb"));
+```
+
+- Name an export by its `id` from a listing, by `"latest"`, or by `dailyExport(date)` or `hourlyExport(date)` for a UTC day or hour. Datasets have no hourly exports.
 - `exportMeta` returns the file's SHA-256 checksum. Use a fixed ID for both calls, because `latest` can move between them.
 - `downloadURL` returns a presigned URL that works without a key for 24 hours, so treat it as a secret. Your API key is never sent to the storage host.
 - Hourly exports roll into the daily export shortly after 00:30 UTC the next day. After that, the hour returns a 400.
+- `proxies` and `anonymizers` also publish lite exports, deduplicated to the latest row per address or range and provider. Pass `variant: "lite"` to `listExports` to list them. A lite export has the same `id` as the full one, so pass `variant: "lite"` again to `exportMeta`, `downloadURL`, and `download`.
+- Files come back exactly as served: a `csv` download is a `.csv.gz` file, and a WHOIS download is a `.tar.gz` archive of Parquet files.
 
 ## Retries
 
@@ -370,7 +388,7 @@ try {
 | 402    | The team is out of lookup credits                                                               |
 | 403    | The key lacks the scope for the endpoint or feed                                                |
 | 404    | The export doesn't exist, or a daily export is still rolling up (`retryAfter` is set)           |
-| 422    | The input is invalid, such as a private address or a malformed domain                           |
+| 422    | The input is invalid, such as a private address                                                 |
 | 429    | Rate limited if `retryAfter` is set; otherwise the budget is spent or too many streams are open |
 | 5xx    | The server failed                                                                               |
 
@@ -454,7 +472,7 @@ try {
 }
 ```
 
-`fetchSchema` reads the key from `SYNTHIENT_API_KEY` unless you pass `apiKey`. `schema.descriptorSet` is a `FileDescriptorSet` from `@bufbuild/protobuf`. `explain` describes common gRPC errors in plain language.
+Server reflection requires an API key. `fetchSchema` reads it from `SYNTHIENT_API_KEY` unless you pass `apiKey`. `schema.descriptorSet` is a `FileDescriptorSet` from `@bufbuild/protobuf`. `explain` describes common gRPC errors in plain language.
 
 # Development
 

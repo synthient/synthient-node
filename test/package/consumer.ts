@@ -32,3 +32,7 @@ export async function download(): Promise<ReadableStream<Uint8Array>> {
 export function schema(): Promise<Schema> {
   return fetchSchema({ endpoint: "localhost:50051", plaintext: true });
 }
+
+export async function geolocation(): Promise<ReadableStream<Uint8Array>> {
+  return client.geolocation.download("latest", { format: "mmdb" });
+}

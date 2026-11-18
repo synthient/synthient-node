@@ -21,7 +21,13 @@ export type NetworkType =
 export type DeviceOS =
   "Android" | "Chrome OS" | "FreeBSD" | "iOS" | "Linux" | "Mac OS X" | "Windows" | (string & {});
 
-/** New values may be added. */
+/**
+ * New values may be added. WHOIS_STREAM, NETWORK_IOCS_FEED, NETWORK_IOCS_STREAM,
+ * FILE_IOCS_FEED, and FILE_IOCS_STREAM are reserved for upcoming feeds, and HELIOS is a
+ * dashboard permission that authorizes no API operation. ADMIN_PROXIES is deprecated:
+ * it never authorized an API operation, the API no longer lists it, and it will be
+ * removed in the next major version.
+ */
 export type Scope =
   | "BASIC"
   | "PROXY_FEEDS"
@@ -44,6 +50,14 @@ export type Scope =
   | "JA4_STREAM"
   | "JA4T_FEED"
   | "JA4T_STREAM"
+  | "HELIOS"
+  | "WHOIS_FEED"
+  | "WHOIS_STREAM"
+  | "GEOLOCATION_FEED"
+  | "NETWORK_IOCS_FEED"
+  | "NETWORK_IOCS_STREAM"
+  | "FILE_IOCS_FEED"
+  | "FILE_IOCS_STREAM"
   | "ADMIN_PROXIES"
   | (string & {});
 
@@ -55,7 +69,10 @@ export type ActivityCadence =
   | "Activity follows a weekend pattern."
   | "Activity is burst-driven with significant peaks.";
 
-/** New values may be added. */
+/**
+ * New values may be added. The datasets also send types such as "double", "date",
+ * "timestamp", and "list<string>".
+ */
 export type ParquetType =
   "string" | "int64" | "uint32" | "uint64" | "bool" | "bytes" | (string & {});
 
@@ -64,7 +81,11 @@ export function toDate(timestamp: UnixTime): Date {
   return new Date(timestamp >= 1e12 ? timestamp : timestamp * 1000);
 }
 
-/** `network`, `location`, and `intelligence` are absent when the API has no data for them. */
+/**
+ * `network` is absent when the address lies in no known network range or the API's
+ * enrichment lookup failed, and `location` is absent along with it. `intelligence` is
+ * absent when the API has no data for it.
+ */
 export interface IPInfo {
   ip: string;
   network?: Network;
@@ -131,7 +152,12 @@ export interface Device {
   last_seen: UnixTime;
 }
 
-/** The honeypot traffic Synthient has observed for a domain. */
+/**
+ * The honeypot traffic Synthient has observed for a domain.
+ *
+ * @deprecated Domain lookup was removed from the Synthient API and will stop working when
+ * the endpoint is turned off. It will be removed in the next major version.
+ */
 export interface DomainInfo {
   domain: string;
   /**
@@ -257,6 +283,28 @@ export interface AccountAPIKey {
   created_at: string;
 }
 
+/** Whether an export covers a UTC day or a UTC hour. */
+export type ExportKind = "hourly" | "daily";
+
+/**
+ * The format of an export file. Feeds have only "parquet". The geolocation dataset adds
+ * "csv", which is gzip-compressed, and "mmdb", a MaxMind DB. The WHOIS dataset is one
+ * "tar.gz" archive of parquet files.
+ */
+export type ExportFormat = "parquet" | "csv" | "mmdb" | "tar.gz";
+
+/**
+ * "full" is every sighting. "lite" is the snapshot deduplicated to the latest row in its
+ * hour or day, with the same columns: one row per address and provider for proxies, per
+ * address, fingerprint, and provider for JA4T, and per range and provider for
+ * anonymizers.
+ */
+export type ExportVariant = "full" | "lite";
+
+/** A parquet file inside a WHOIS archive. */
+export type WhoisEntity =
+  "asns" | "networks" | "organisations" | "contacts" | "maintainers" | "transfers" | "delegations";
+
 /** One page of a feed's exports, newest first. */
 export interface ExportPage {
   /** The feed's stream identifier, such as "proxies". */
@@ -267,7 +315,7 @@ export interface ExportPage {
   next_cursor?: string | null;
 }
 
-/** A parquet export of a feed. */
+/** An export of a feed or dataset. */
 export interface Export {
   /**
    * Identifies the export: "YYYY-MM-DD" for a daily export, "YYYY-MM-DD/H" with an
@@ -275,38 +323,100 @@ export interface Export {
    * first page. Pass it to `download`.
    */
   id: string;
-  /** Whether the export covers a UTC day or a UTC hour. */
-  kind: "hourly" | "daily";
+  kind: ExportKind;
   /** The UTC day of the export as "YYYY-MM-DD". */
   date: string;
   /** The UTC hour of an hourly export, absent or null for a daily export. */
   hour?: number | null;
+  /** The size in bytes of the first file in `formats`. */
   size_bytes: number;
+  /** The number of rows. For WHOIS, the sum of its entities' rows. */
   row_count: number;
-  /** The hex-encoded SHA-256 of the parquet file. */
+  /** The hex-encoded SHA-256 of the first file in `formats`. */
   checksum: string;
   created_at: UnixTime;
   /** The API path of the export's download, including the version prefix. */
   download_path: string;
+  /** Every file of the export, its own format first. */
+  formats: ExportFile[];
+  /** The parquet files inside a WHOIS archive, absent for other exports. */
+  entities?: ExportEntity[];
+  /**
+   * "lite" in a lite listing, where the sizes, checksum, and `download_path` describe the
+   * lite file, and absent otherwise. `id` is the same for both variants, so pass the
+   * variant again to download the lite file.
+   */
+  variant?: ExportVariant;
 }
 
 export interface ExportMeta {
   id: string;
   stream: string;
-  /** Whether the export covers a UTC day or a UTC hour. */
-  kind: "hourly" | "daily";
-  format: "parquet";
+  kind: ExportKind;
+  /** The format of the file that `checksum`, `size`, and `schema` describe. */
+  format: ExportFormat;
   /** The start of the export: midnight UTC for a daily export, the hour for an hourly one. */
   date: UnixTime;
   /** The UTC hour of an hourly export, absent or null for a daily export. */
   hour?: number | null;
   rows: number;
-  /** The size of the parquet file in bytes. */
+  /** The size of the file in bytes. */
   size: number;
-  /** The hex-encoded SHA-256 of the parquet file. */
+  /** The hex-encoded SHA-256 of the file. */
   checksum: string;
   created_at: UnixTime;
+  /** The file's columns. A WHOIS archive has none; its parquet files list theirs in `entities`. */
   schema: ParquetSchema;
+  /** Every file of the export, its own format first. */
+  formats: ExportFile[];
+  /** The parquet files inside a WHOIS archive, each with its columns, absent for other exports. */
+  entities?: ExportEntity[];
+  /**
+   * "lite" for a lite export, where the checksum, size, rows, schema, and formats describe
+   * the lite file, and absent otherwise.
+   */
+  variant?: ExportVariant;
+}
+
+/** One file of an export. */
+export interface ExportFile {
+  format: ExportFormat;
+  size_bytes: number;
+  /** The hex-encoded SHA-256 of the file as downloaded, so of the gzip file for "csv". */
+  checksum: string;
+}
+
+/** A parquet file inside a WHOIS archive. */
+export interface ExportEntity {
+  entity: WhoisEntity;
+  row_count: number;
+  size_bytes: number;
+  /** The hex-encoded SHA-256 of the parquet file. */
+  checksum: string;
+  /** The parquet file's columns, present only in `exportMeta` results. */
+  schema?: ParquetSchema;
+}
+
+/** The rows and bytes a feed or dataset exported per UTC day. */
+export interface ExportVolume {
+  /** The feed's stream identifier, such as "proxies". */
+  stream: string;
+  /** Oldest first. Today is included while in progress, and days without exports are left out. */
+  days: ExportVolumeDay[];
+}
+
+export interface ExportVolumeDay {
+  /** The UTC day as "YYYY-MM-DD". */
+  date: string;
+  /**
+   * "daily" when the day's rollup is counted. "hourly" when its hourly exports are summed
+   * instead, as for today or a day whose rollup is still pending.
+   */
+  kind: ExportKind;
+  /** The number of files counted: 1 for a rollup, otherwise the hourly exports so far, of 24. */
+  snapshots: number;
+  row_count: number;
+  size_bytes: number;
 }
 
 export interface ParquetSchema {

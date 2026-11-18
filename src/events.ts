@@ -96,6 +96,9 @@ export interface JA4TEvent {
   timestamp?: UnixTime;
 }
 
+/** The tunnel transport a Helios event arrived over. New values may be added. */
+export type HeliosTransport = "tcp" | "udp" | "quic" | (string & {});
+
 /** The Helios honeypot sensor that captured an event. */
 export interface HeliosMeta {
   /** The proxy exit address the traffic arrived through. */
@@ -152,6 +155,7 @@ export interface HeliosHTTPSEvent {
   port: number;
   protocol: "https";
   meta: HeliosMeta;
+  transport: HeliosTransport;
   /** The parsed ClientHello, or null when the sensor could not parse the handshake. */
   details?: TLSClientHello | null;
   /** Always null: the HTTPS sensors do not capture handshake bytes. */
@@ -206,6 +210,26 @@ export interface TLSClientHello {
   signed_certificate_timestamps?: boolean;
   /** Whether the status_request extension is present. */
   status_request?: boolean;
+  /** False when the sensor captured only part of the ClientHello. */
+  complete?: boolean;
+  /** Present and true when the ClientHello was cut short. */
+  truncated?: boolean;
+  /** The transport the handshake was read from, as the sensor reports it. */
+  transport?: HeliosTransport;
+  /** `record_version` as its wire code point, such as 769. */
+  record_version_code?: number;
+  /** `handshake_version` as its wire code point, such as 771. */
+  handshake_version_code?: number;
+  /** The `supported_versions` entries as wire code points, in order, including GREASE values. */
+  supported_version_codes?: number[];
+  /** The `alpn` entries hex-encoded, in order. */
+  alpn_hex?: string[];
+  /** The TLS 1.3 signature_algorithms_cert extension. */
+  signature_algorithms_cert?: TLSCodeName[];
+  /** The record_size_limit extension value. */
+  record_size_limit?: number;
+  /** The max_fragment_length extension value. */
+  max_fragment_length?: number;
 }
 
 /** A TLS registry value, such as a cipher suite or group, with its name. */
@@ -233,6 +257,7 @@ export interface HeliosDNSEvent {
   port: number;
   protocol: "dns";
   meta: HeliosMeta;
+  transport: HeliosTransport;
 }
 
 /**
@@ -252,4 +277,6 @@ export interface HeliosADBEvent {
    * replay the same script.
    */
   hash: string;
+  /** Null from sensors that don't send it yet. */
+  meta: HeliosMeta | null;
 }

@@ -22,6 +22,26 @@ test("account returns the account as sent", async () => {
   assert.equal(requests[0]?.url, `${BASE_URL}/account/me`);
 });
 
+test("account decodes new scopes and a null api_key as absent", async () => {
+  const scopes = [
+    "GEOLOCATION_FEED",
+    "WHOIS_FEED",
+    "WHOIS_STREAM",
+    "HELIOS",
+    "NETWORK_IOCS_FEED",
+    "NETWORK_IOCS_STREAM",
+    "FILE_IOCS_FEED",
+    "FILE_IOCS_STREAM",
+    "SOMETHING_NEW",
+  ];
+  const { fetch } = stub(() => json(200, { ...ACCOUNT, scopes, api_key: null }));
+
+  const account = await newClient({ fetch }).account();
+
+  assert.deepEqual(account.scopes, scopes);
+  assert.equal("api_key" in account, false);
+});
+
 test("health resolves when the API is healthy", async () => {
   const { fetch, requests } = stub(() => json(200, { status: "ok" }));
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { APIConnectionError, SynthientError, toDate } from "../src/index.ts";
+import { APIConnectionError, SynthientError, toDate, type TLSClientHello } from "../src/index.ts";
 import {
   BASE_URL,
   chunked,
@@ -78,6 +78,89 @@ test("stream passes Helios HTTPS ClientHellos through", async () => {
     events,
     lines.map((line) => ({ ...line, tunnel_id: "42" })),
   );
+});
+
+test("stream decodes every new TLSClientHello field, or none", async () => {
+  const meta = { proxy_ip: "203.0.113.10", server: "hp-eu-1", pool_id: "prod", provider: "X" };
+  const base = { timestamp: 1714780800123, tunnel_id: 42, domain: "example.com", port: 443 };
+  const hello = {
+    record_version: "TLS 1.0",
+    record_version_code: 769,
+    handshake_version: "TLS 1.2",
+    handshake_version_code: 771,
+    supported_version_codes: [2570, 772, 771],
+    alpn_hex: ["6832", "687474702f312e31"],
+    signature_algorithms_cert: [{ code: 2052, name: "rsa_pss_rsae_sha256" }],
+    record_size_limit: 16385,
+    max_fragment_length: 4,
+    complete: false,
+    truncated: true,
+    transport: "tcp",
+  } satisfies TLSClientHello;
+  const lines = [hello, {}].map((details) => {
+    return { ...base, protocol: "https", meta, transport: "tcp", details };
+  });
+  const { fetch, requests } = stub(() => {
+    return chunked([lines.map((line) => JSON.stringify(line)).join("\n")]);
+  });
+
+  const events = await collect(newClient({ fetch }).heliosHTTPS.stream());
+
+  assert.deepEqual(
+    events,
+    lines.map((line) => ({ ...line, tunnel_id: "42" })),
+  );
+  assert.equal(requests[0]?.url, `${BASE_URL}/feeds/helios/https/stream`);
+});
+
+test("stream decodes the Helios DNS and HTTPS transport, including new values", async () => {
+  const meta = { proxy_ip: "203.0.113.10", server: "hp-eu-1", pool_id: "prod", provider: "X" };
+  for (const protocol of ["dns", "https"] as const) {
+    const lines = ["tcp", "udp", "quic", "sctp"].map((transport) => {
+      return {
+        timestamp: 1714780800123,
+        tunnel_id: 7,
+        domain: "a.test",
+        port: 53,
+        protocol,
+        meta,
+        transport,
+      };
+    });
+    const { fetch } = stub(() => chunked([lines.map((line) => JSON.stringify(line)).join("\n")]));
+    const client = newClient({ fetch });
+
+    const events = await collect<{ transport: string }>(
+      protocol === "dns" ? client.heliosDNS.stream() : client.heliosHTTPS.stream(),
+    );
+
+    assert.deepEqual(
+      events.map((event) => event.transport),
+      ["tcp", "udp", "quic", "sctp"],
+    );
+  }
+});
+
+test("stream decodes Helios ADB events with and without meta", async () => {
+  const meta = { proxy_ip: "203.0.113.10", server: "hp-eu-1", pool_id: "prod", provider: "X" };
+  const base = {
+    session: "00075b3dde7ddb645347a137f01ac991",
+    sequential_id: 3,
+    command: "cd /data/local/tmp",
+    hash: "cd6d",
+  };
+  const lines = [
+    { ...base, meta },
+    { ...base, meta: null },
+  ];
+  const { fetch, requests } = stub(() =>
+    chunked([lines.map((line) => JSON.stringify(line)).join("\n")]),
+  );
+
+  const events = await collect(newClient({ fetch }).heliosADB.stream());
+
+  assert.deepEqual(events, lines);
+  assert.equal(requests[0]?.url, `${BASE_URL}/feeds/helios/adb/stream`);
 });
 
 test("stream keeps Helios tunnel IDs as their exact digits", async () => {

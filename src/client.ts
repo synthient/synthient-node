@@ -10,7 +10,7 @@ import type {
   ProxyEvent,
   TorrentEvent,
 } from "./events.ts";
-import { Feed, exactTunnelID } from "./feed.ts";
+import { Dataset, Feed, exactTunnelID } from "./feed.ts";
 import { checkTimeout, limitQuery, resolveAPIKey } from "./options.ts";
 import {
   Transport,
@@ -57,6 +57,10 @@ export interface ClientOptions {
   onResponse?: ((metadata: ResponseMetadata) => void) | undefined;
 }
 
+/**
+ * @deprecated Domain lookup was removed from the Synthient API and will stop working when
+ * the endpoint is turned off. It will be removed in the next major version.
+ */
 export interface LookupDomainOptions extends RequestOptions {
   /** Caps the number of recent events returned. The API default is 50, and it clamps values above 1000. */
   limit?: number | undefined;
@@ -91,6 +95,13 @@ export class Synthient {
   readonly heliosDNS: Feed<HeliosDNSEvent>;
   /** The Helios honeypot Android Debug Bridge command feed. Streaming needs the HONEYPOT_ADB_STREAM scope and exports need HONEYPOT_ADB_FEED. */
   readonly heliosADB: Feed<HeliosADBEvent>;
+  /**
+   * The daily IP geolocation dataset, as "parquet", gzip-compressed "csv", and "mmdb"
+   * files. It needs the GEOLOCATION_FEED scope.
+   */
+  readonly geolocation: Dataset;
+  /** The daily WHOIS registry dataset, as a "tar.gz" archive of parquet files. It needs the WHOIS_FEED scope. */
+  readonly whois: Dataset;
   readonly #transport: Transport;
 
   /** Throws a TypeError or RangeError if the API key is missing or an option is invalid. */
@@ -134,10 +145,12 @@ export class Synthient {
     this.anonymizers = new Feed(this.#transport, "/feeds/anonymizers");
     this.torrents = new Feed(this.#transport, "/feeds/torrents");
     this.ja4t = new Feed(this.#transport, "/feeds/ja4t");
-    this.heliosHTTP = new Feed(this.#transport, "/feeds/helio/http", exactTunnelID);
-    this.heliosHTTPS = new Feed(this.#transport, "/feeds/helio/https", exactTunnelID);
-    this.heliosDNS = new Feed(this.#transport, "/feeds/helio/dns", exactTunnelID);
-    this.heliosADB = new Feed(this.#transport, "/feeds/helio/adb");
+    this.heliosHTTP = new Feed(this.#transport, "/feeds/helios/http", exactTunnelID);
+    this.heliosHTTPS = new Feed(this.#transport, "/feeds/helios/https", exactTunnelID);
+    this.heliosDNS = new Feed(this.#transport, "/feeds/helios/dns", exactTunnelID);
+    this.heliosADB = new Feed(this.#transport, "/feeds/helios/adb");
+    this.geolocation = new Dataset(this.#transport, "/feeds/geolocation");
+    this.whois = new Dataset(this.#transport, "/feeds/whois");
   }
 
   /**
@@ -149,18 +162,21 @@ export class Synthient {
     if (typeof ip !== "string" || isIP(ip) === 0) {
       throw new TypeError("invalid IP address");
     }
-    return this.#transport.json<IPInfo>(
+    const info = await this.#transport.json<IPInfo>(
       { path: `/lookup/ip/${pathSegment(ip)}`, policy: "rateLimit" },
       options?.signal,
     );
+    return nullAsAbsent(info, "network", "location");
   }
 
   /**
    * Looks up as many as 1000 addresses in one request, billed as ceil(n × 0.9) credits
-   * for the n distinct usable addresses. Private and reserved addresses are skipped and
-   * duplicates collapse, so match results by their canonical `ip`, not by position.
-   * Results follow the order each address first appears. A batch with no usable address
-   * rejects with an APIError with status 422. An empty list returns [] without a request.
+   * for the n distinct usable addresses. The cap depends on the workspace plan: 100 on
+   * Free, 500 on Starter, and 1000 on Premium and Enterprise. Private and reserved
+   * addresses are skipped and duplicates collapse, so match results by their canonical
+   * `ip`, not by position. Results follow the order each address first appears. A batch
+   * over the plan's cap or with no usable address rejects with an APIError with status
+   * 422. An empty list returns [] without a request.
    */
   async lookupIPs(ips: Iterable<string>, options?: RequestOptions): Promise<IPInfo[]> {
     const addresses = Array.from(ips);
@@ -186,14 +202,18 @@ export class Synthient {
     if (!Array.isArray(batch.results)) {
       throw new SynthientError("batch response has no results array");
     }
-    return batch.results;
+    return batch.results.map((info) => nullAsAbsent(info, "network", "location"));
   }
 
   /**
    * Returns the honeypot traffic observed for a domain. A domain that was never observed
    * resolves with status "inactive" and zeroed stats. Internationalized names must be
    * sent in Punycode. Each lookup costs one credit.
+   *
+   * @deprecated Domain lookup was removed from the Synthient API and will stop working
+   * when the endpoint is turned off. It will be removed in the next major version.
    */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- its own deprecated types
   async lookupDomain(domain: string, options?: LookupDomainOptions): Promise<DomainInfo> {
     if (
       typeof domain !== "string" ||
@@ -204,7 +224,7 @@ export class Synthient {
     ) {
       throw new TypeError("invalid domain");
     }
-    return this.#transport.json<DomainInfo>(
+    return this.#transport.json(
       {
         path: `/lookup/domain/${pathSegment(domain)}`,
         query: limitQuery(options?.limit),
@@ -219,19 +239,31 @@ export class Synthient {
    * lookup credits. It costs no credits.
    */
   async account(options?: RequestOptions): Promise<Account> {
-    return this.#transport.json<Account>(
+    const account = await this.#transport.json<Account>(
       { path: "/account/me", policy: "transient" },
       options?.signal,
     );
+    return nullAsAbsent(account, "api_key");
   }
 
   /**
-   * Resolves if the API and its dependencies are healthy. An unhealthy API rejects at
-   * once with an APIError with status 503.
+   * Resolves if the API and its dependencies are healthy. It needs a valid API key with
+   * any scope. An unhealthy API rejects at once with an APIError with status 503.
    */
   async health(options?: RequestOptions): Promise<void> {
     await this.#transport.json({ path: "/health", policy: "rateLimit" }, options?.signal);
   }
+}
+
+// The API began sending null for some fields that these types model as absent when
+// missing, so a null becomes absent to keep the types true.
+function nullAsAbsent<T extends object>(value: T, ...keys: (keyof T)[]): T {
+  for (const key of keys) {
+    if (value[key] === null) {
+      Reflect.deleteProperty(value, key);
+    }
+  }
+  return value;
 }
 
 // Escapes a path segment like Go's url.PathEscape, which the other Synthient SDKs use:
