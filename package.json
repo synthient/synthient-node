@@ -67,7 +67,7 @@
     "@grpc/grpc-js": "^1.14.5",
     "@grpc/proto-loader": "^0.8.1",
     "@grpc/reflection": "^1.0.4",
-    "@types/node": "^22.20.4",
+    "@types/node": "^22.20.5",
     "eslint": "^10.11.0",
     "prettier": "^3.9.9",
     "publint": "^0.3.24",
